@@ -12,13 +12,13 @@ func _ready() -> void:
 func _draw() -> void:
 	if not debug_draw or graph == null:
 		return
-	for sid in graph.SECTION_IDS:
+	for sid in graph.section_ids:
 		var pos := graph.get_section_position(sid)
 		if pos == Vector2.ZERO:
 			continue
 		draw_circle(pos, 12.0, Color.GREEN)
 		draw_arc(pos, 14.0, 0.0, TAU, 8, Color.WHITE)
-	for sid in graph.SECTION_IDS:
+	for sid in graph.section_ids:
 		for neighbor in graph.get_neighbors(sid):
 			var from_pos := graph.get_section_position(sid)
 			var to_pos := graph.get_section_position(neighbor.to)

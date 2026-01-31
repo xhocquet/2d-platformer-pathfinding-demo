@@ -11,10 +11,10 @@ size = Vector2(2000, 100)
 size = Vector2(120, 24)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
-radius = 24.0
+radius = 14.035668
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_enemy"]
-radius = 22.0
+radius = 14.035668
 
 [node name="Node2D" type="Node2D"]
 
@@ -73,6 +73,7 @@ script = ExtResource("1_script")
 shape = SubResource("CircleShape2D_player")
 
 [node name="Polygon2D" type="Polygon2D" parent="Player"]
+position = Vector2(-10, 0)
 color = Color(0.2, 0.5, 0.9, 1)
 polygon = PackedVector2Array(24, 0, 22.17, 6.21, 16.97, 11.31, 10.76, 13.14, 4.23, 11.31, -1.03, 6.21, -2.76, 0, -1.03, -6.21, 4.23, -11.31, 10.76, -13.14, 16.97, -11.31, 22.17, -6.21)
 
@@ -84,5 +85,6 @@ script = ExtResource("2_script")
 shape = SubResource("CircleShape2D_enemy")
 
 [node name="Polygon2D" type="Polygon2D" parent="Enemy"]
+position = Vector2(-9, 0)
 color = Color(0.85, 0.25, 0.2, 1)
 polygon = PackedVector2Array(22, 0, 20.36, 5.7, 15.56, 10.5, 9.87, 12.06, 3.88, 10.38, -0.94, 5.7, -2.53, 0, -0.94, -5.7, 3.88, -10.38, 9.87, -12.06, 15.56, -10.5, 20.36, -5.7)
