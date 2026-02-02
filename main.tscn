@@ -42,7 +42,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform4" type="StaticBody2D" parent="."]
-position = Vector2(206, 378.4882)
+position = Vector2(225, 428.55276)
 scale = Vector2(2.4800012, 0.32000488)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform4"]
@@ -53,7 +53,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform2" type="StaticBody2D" parent="."]
-position = Vector2(590, 206.26605)
+position = Vector2(587, 361.46625)
 scale = Vector2(0.6400484, 0.45145908)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform2"]
@@ -64,7 +64,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform5" type="StaticBody2D" parent="."]
-position = Vector2(301.99997, 125.999985)
+position = Vector2(312, 272.3513)
 scale = Vector2(1.64, 0.27999997)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform5"]
@@ -75,7 +75,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform6" type="StaticBody2D" parent="."]
-position = Vector2(972, 186)
+position = Vector2(1022, 238.30737)
 scale = Vector2(1.64, 0.27999997)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform6"]

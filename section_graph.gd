@@ -9,6 +9,7 @@ enum EdgeType { WALK, FALL, JUMP }
 var _edges: Array[Dictionary] = []
 var _positions: Dictionary = {}  # section_id -> Vector2 (filled when root set)
 var _node_to_sections: Dictionary = {}  # Node -> [section_id_left, section_id_right]
+var _platforms: Array[StaticBody2D] = []
 var _root: Node2D
 # Max vertical rise for jump edges; edges exceeding this are not added (match player jump_height).
 var max_jump_height: float = 220.0
@@ -32,12 +33,12 @@ func set_root(root: Node2D) -> void:
 	_positions.clear()
 	_node_to_sections.clear()
 	_edges.clear()
-	var platforms: Array[StaticBody2D] = _discover_platforms(root)
-	_register_positions_from_platforms(platforms)
-	_register_jump_points_from_platforms(platforms)
+	_platforms = _discover_platforms(root)
+	_register_positions_from_platforms()
+	_register_jump_points_from_platforms()
 	_sanitize_points()
-	_build_edges(platforms)
-	# _filter_edges_by_vertical_reach()
+	_build_edges()
+	_sanitize_edges()
 
 func _discover_platforms(root: Node2D) -> Array[StaticBody2D]:
 	var list: Array[StaticBody2D] = []
@@ -52,8 +53,8 @@ func _discover_platforms(root: Node2D) -> Array[StaticBody2D]:
 	list.sort_custom(func(a: StaticBody2D, b: StaticBody2D) -> bool: return a.global_position.x < b.global_position.x)
 	return list
 
-func _register_positions_from_platforms(platforms: Array[StaticBody2D]) -> void:
-	for n in platforms:
+func _register_positions_from_platforms() -> void:
+	for n in _platforms:
 		var pname: StringName = n.name
 		var shape: CollisionShape2D = n.get_node_or_null("CollisionShape2D") as CollisionShape2D
 		var ext := Vector2.ZERO
@@ -68,7 +69,7 @@ func _register_positions_from_platforms(platforms: Array[StaticBody2D]) -> void:
 		_node_to_sections[n] = [left_sid, right_sid]
 
 
-func _filter_edges_by_vertical_reach() -> void:
+func _sanitize_edges() -> void:
 	var keep: Array[Dictionary] = []
 	for e in _edges:
 		var a: Vector2 = _positions.get(e.from, Vector2.ZERO)
@@ -172,10 +173,10 @@ func _y_under_point(segments: Array, x: float, ledge_y: float, fallback_y: float
 	return best if best < INF else fallback_y
 
 # Fallback y for _y_under_point is lowest surface (max top_y among platforms).
-func _register_jump_points_from_platforms(platforms: Array[StaticBody2D]) -> void:
+func _register_jump_points_from_platforms() -> void:
 	var segments: Array = []  # { left_x, right_x, top_y }
 	var fallback_y := -INF
-	for p in platforms:
+	for p in _platforms:
 		var pname: StringName = p.name
 		var pl: Vector2 = _positions.get(StringName(str(pname) + "_L"), Vector2.ZERO)
 		var pr: Vector2 = _positions.get(StringName(str(pname) + "_R"), Vector2.ZERO)
@@ -184,7 +185,7 @@ func _register_jump_points_from_platforms(platforms: Array[StaticBody2D]) -> voi
 			fallback_y = pl.y
 	fallback_y = fallback_y if fallback_y > -INF else 0.0
 
-	for p in platforms:
+	for p in _platforms:
 		var pname: StringName = p.name
 		var left_sid := StringName(str(pname) + "_L")
 		var right_sid := StringName(str(pname) + "_R")
@@ -212,8 +213,8 @@ func _get_section_at_pos(x: float, y: float) -> StringName:
 			return StringName(base + "_L") if x < mid else StringName(base + "_R")
 	return &""
 
-func _build_edges(platforms: Array[StaticBody2D]) -> void:
-	for p in platforms:
+func _build_edges() -> void:
+	for p in _platforms:
 		var pname: StringName = p.name
 		var pl := StringName(str(pname) + "_L")
 		var pr := StringName(str(pname) + "_R")
@@ -222,14 +223,14 @@ func _build_edges(platforms: Array[StaticBody2D]) -> void:
 		_add_edge(pl, StringName(str(pname) + "_L_jump"), EdgeType.FALL)
 		_add_edge(pr, StringName(str(pname) + "_R_jump"), EdgeType.FALL)
 
-	for i in range(platforms.size() - 1):
-		var pr := StringName(str(platforms[i].name) + "_R")
-		var next_pl := StringName(str(platforms[i + 1].name) + "_L")
+	for i in range(_platforms.size() - 1):
+		var pr := StringName(str(_platforms[i].name) + "_R")
+		var next_pl := StringName(str(_platforms[i + 1].name) + "_L")
 		_add_jump_edge_if_reachable(pr, next_pl)
 		_add_jump_edge_if_reachable(next_pl, pr)
 
 	# Connect each endpoint to any platform surface directly below (fixes stacked/overlapping platforms, e.g. left side).
-	for p in platforms:
+	for p in _platforms:
 		var pair: Array = _node_to_sections.get(p, [])
 		if pair.size() < 2:
 			continue
@@ -241,7 +242,7 @@ func _build_edges(platforms: Array[StaticBody2D]) -> void:
 				continue
 			var x: float = pos.x
 			var y: float = pos.y
-			for q in platforms:
+			for q in _platforms:
 				if q == p:
 					continue
 				var qpair: Array = _node_to_sections.get(q, [])
@@ -260,7 +261,7 @@ func _build_edges(platforms: Array[StaticBody2D]) -> void:
 				_add_jump_edge_if_reachable(sid, under_section)
 				_add_jump_edge_if_reachable(under_section, sid)
 
-	for p in platforms:
+	for p in _platforms:
 		var pname: StringName = p.name
 		var pl := StringName(str(pname) + "_L")
 		var pr := StringName(str(pname) + "_R")
