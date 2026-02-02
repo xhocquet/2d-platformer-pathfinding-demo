@@ -18,12 +18,6 @@ var jump_point_offset: float = 40.0
 # Merge points within this distance (≈75% overlap if points had this radius).
 var _collapse_radius: float = 20.0
 
-func _add_edge(from: StringName, to: StringName, type: EdgeType) -> void:
-	for e in _edges:
-		if e.from == from and e.to == to and e.type == type:
-			return
-	_edges.append({ from = from, to = to, type = type })
-
 func set_root(root: Node2D) -> void:
 	_root = root
 	_positions.clear()
@@ -379,3 +373,10 @@ func _reconstruct_path(came_from: Dictionary, current: StringName) -> Array[Stri
 		current = came_from[current]
 		path.insert(0, current)
 	return path
+
+
+func _add_edge(from: StringName, to: StringName, type: EdgeType) -> void:
+	for e in _edges:
+		if e.from == from and e.to == to and e.type == type:
+			return
+	_edges.append({ from = from, to = to, type = type })
