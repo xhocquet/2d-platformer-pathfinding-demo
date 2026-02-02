@@ -1,10 +1,10 @@
 extends CharacterBody2D
 
-@export var move_speed := 280.0
-@export var jump_height := 320.0
-@export var jump_cooldown_time := 0.4
+@export var move_speed: float = 280.0
+@export var jump_height: float = 220.0
+@export var jump_cooldown_time: float = 0.4
 
-var _jump_cooldown := 0.0
+var _jump_cooldown: float = 0.0
 
 func _physics_process(delta: float) -> void:
 	var g: float = ProjectSettings.get_setting("physics/2d/default_gravity")
