@@ -12,6 +12,7 @@ const RADIUS: float = 12.0
 const SEGMENTS: int = 16
 
 func _ready() -> void:
+	z_index = 9000
 	graph = SectionGraph.new()
 	graph.set_root(get_parent())
 	_player = get_parent().get_node("Player") as CharacterBody2D
@@ -61,9 +62,8 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-
-	var player_sid: StringName = _player.get_current_section_id()
-	var enemy_sid: StringName = _enemy.get_current_section_id()
+	var player_sid: StringName = _player.get_current_section_id() if _player else &""
+	var enemy_sid: StringName = _enemy.get_current_section_id() if _enemy else &""
 
 	for sid in graph.get_section_ids():
 		var from_pos := graph.get_section_position(sid)
@@ -81,8 +81,29 @@ func _draw() -> void:
 			if from_pos == Vector2.ZERO or to_pos == Vector2.ZERO:
 				continue
 
-			var c: Color = Color.YELLOW if neighbor.type == SectionGraph.EdgeType.JUMP else Color.ORANGE
-			draw_line(from_pos, to_pos, c)
+			var dir := (to_pos - from_pos).normalized()
+			var perp := Vector2(-dir.y, dir.x)
+			var k: int = str(sid).hash() + str(neighbor.to).hash()
+			var offset_amount: float = randf_range(-5.0, 5.0)
+			var a := from_pos + perp * offset_amount
+			var b := to_pos + perp * offset_amount
+
+			var c: Color = graph.get_debug_edge_color(neighbor.type)
+			draw_line(a, b, c)
+
+	if debug_draw:
+		_draw_debug_legend()
+
+func _draw_debug_legend() -> void:
+	const LEGEND_OFFSET := Vector2(24.0, 24.0)
+	const LINE_HEIGHT := 20.0
+	const SAMPLE_LEN := 24.0
+	var entries: Array = graph.get_debug_legend_entries()
+	for i in entries.size():
+		var entry: Dictionary = entries[i]
+		var pos := LEGEND_OFFSET + Vector2(0.0, i * LINE_HEIGHT)
+		draw_line(pos, pos + Vector2(SAMPLE_LEN, 0.0), entry.color)
+		draw_string(ThemeDB.fallback_font, pos + Vector2(SAMPLE_LEN + 8.0, 4.0), entry.label, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 14, entry.color)
 
 func _draw_filled_half_circle(center: Vector2, radius: float, start_angle: float, end_angle: float, color: Color) -> void:
 	var points: PackedVector2Array = [center]

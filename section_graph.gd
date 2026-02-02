@@ -18,10 +18,6 @@ var jump_point_offset: float = 40.0
 # Merge points within this distance (≈75% overlap if points had this radius).
 var _collapse_radius: float = 20.0
 
-
-func _init() -> void:
-	pass  # edges built in set_root after we have positions
-
 func _add_edge(from: StringName, to: StringName, type: EdgeType) -> void:
 	for e in _edges:
 		if e.from == from and e.to == to and e.type == type:
@@ -70,20 +66,28 @@ func _register_positions_from_platforms() -> void:
 
 func _sanitize_edges() -> void:
 	var keep: Array[Dictionary] = []
+	var seen_walk: Dictionary = {}  # normalized "from|to" -> true for WALK dedupe
 	for e in _edges:
 		var a: Vector2 = _positions.get(e.from, Vector2.ZERO)
 		var b: Vector2 = _positions.get(e.to, Vector2.ZERO)
-		if absf(a.y - b.y) <= max_jump_height:
-			keep.append(e)
+		if absf(a.y - b.y) > max_jump_height:
+			continue
+		if e.type == EdgeType.WALK:
+			var key: String = str(e.from) + "|" + str(e.to) if str(e.from) < str(e.to) else str(e.to) + "|" + str(e.from)
+			if seen_walk.has(key):
+				continue
+			seen_walk[key] = true
+		keep.append(e)
 	_edges = keep
 
-func _add_jump_edge_if_reachable(from_id: StringName, to_id: StringName) -> void:
+func _add_edge_if_reachable(from_id: StringName, to_id: StringName) -> void:
 	var from_pos: Vector2 = _positions.get(from_id, Vector2.ZERO)
 	var to_pos: Vector2 = _positions.get(to_id, Vector2.ZERO)
-	var rise := from_pos.y - to_pos.y  # positive when destination is above
-	if rise > max_jump_height:
-		return
-	_add_edge(from_id, to_id, EdgeType.JUMP)
+	var dy: float = to_pos.y - from_pos.y
+	if dy > 0:
+		_add_edge(from_id, to_id, EdgeType.FALL)
+	elif dy < 0 and (from_pos.y - to_pos.y) <= max_jump_height:
+		_add_edge(from_id, to_id, EdgeType.JUMP)
 
 func _sanitize_points() -> void:
 	var min_x := INF
@@ -212,57 +216,44 @@ func _get_section_at_pos(x: float, y: float) -> StringName:
 	return &""
 
 func _build_edges() -> void:
+	# One pass per platform: graph is platform-centric. Each platform contributes (1) walk L↔R,
+	# (2) fall/jump edges to sections directly below its endpoints (stacked/overlapping platforms),
+	# (3) jump-point nodes and their walk/jump edges.
 	for p in _platforms:
 		var pname: StringName = p.name
 		var pl := StringName(str(pname) + "_L")
 		var pr := StringName(str(pname) + "_R")
 		_add_edge(pl, pr, EdgeType.WALK)
-		_add_edge(pr, pl, EdgeType.WALK)
-		_add_edge(pl, StringName(str(pname) + "_L_jump"), EdgeType.FALL)
-		_add_edge(pr, StringName(str(pname) + "_R_jump"), EdgeType.FALL)
 
-	for i in range(_platforms.size() - 1):
-		var pr := StringName(str(_platforms[i].name) + "_R")
-		var next_pl := StringName(str(_platforms[i + 1].name) + "_L")
-		_add_jump_edge_if_reachable(pr, next_pl)
-		_add_jump_edge_if_reachable(next_pl, pr)
-
-	# Connect each endpoint to any platform surface directly below (fixes stacked/overlapping platforms, e.g. left side).
-	for p in _platforms:
 		var pair: Array = _node_to_sections.get(p, [])
-		if pair.size() < 2:
-			continue
-		var left_sid: StringName = pair[0]
-		var right_sid: StringName = pair[1]
-		for sid in [left_sid, right_sid]:
-			var pos: Vector2 = _positions.get(sid, Vector2.ZERO)
-			if pos == Vector2.ZERO:
-				continue
-			var x: float = pos.x
-			var y: float = pos.y
-			for q in _platforms:
-				if q == p:
+		if pair.size() >= 2:
+			var left_sid: StringName = pair[0]
+			var right_sid: StringName = pair[1]
+			for sid in [left_sid, right_sid]:
+				var pos: Vector2 = _positions.get(sid, Vector2.ZERO)
+				if pos == Vector2.ZERO:
 					continue
-				var qpair: Array = _node_to_sections.get(q, [])
-				if qpair.size() < 2:
-					continue
-				var ql: Vector2 = _positions.get(qpair[0], Vector2.ZERO)
-				var qr: Vector2 = _positions.get(qpair[1], Vector2.ZERO)
-				var q_left_x: float = minf(ql.x, qr.x)
-				var q_right_x: float = maxf(ql.x, qr.x)
-				var q_top_y: float = ql.y
-				if x < q_left_x - _SEGMENT_X_TOLERANCE or x > q_right_x + _SEGMENT_X_TOLERANCE or q_top_y <= y:
-					continue
-				var under_section: StringName = _get_section_at_pos(x, q_top_y)
-				if under_section == &"" or under_section == sid:
-					continue
-				_add_jump_edge_if_reachable(sid, under_section)
-				_add_jump_edge_if_reachable(under_section, sid)
+				var x: float = pos.x
+				var y: float = pos.y
+				for q in _platforms:
+					if q == p:
+						continue
+					var qpair: Array = _node_to_sections.get(q, [])
+					if qpair.size() < 2:
+						continue
+					var ql: Vector2 = _positions.get(qpair[0], Vector2.ZERO)
+					var qr: Vector2 = _positions.get(qpair[1], Vector2.ZERO)
+					var q_left_x: float = minf(ql.x, qr.x)
+					var q_right_x: float = maxf(ql.x, qr.x)
+					var q_top_y: float = ql.y
+					if x < q_left_x - _SEGMENT_X_TOLERANCE or x > q_right_x + _SEGMENT_X_TOLERANCE or q_top_y <= y:
+						continue
+					var under_section: StringName = _get_section_at_pos(x, q_top_y)
+					if under_section == &"" or under_section == sid:
+						continue
+					_add_edge_if_reachable(sid, under_section)
+					_add_edge_if_reachable(under_section, sid)
 
-	for p in _platforms:
-		var pname: StringName = p.name
-		var pl := StringName(str(pname) + "_L")
-		var pr := StringName(str(pname) + "_R")
 		var jp_l := StringName(str(pname) + "_L_jump")
 		var jp_r := StringName(str(pname) + "_R_jump")
 		var jp_l_pos: Vector2 = _positions.get(jp_l, Vector2.ZERO)
@@ -275,10 +266,11 @@ func _build_edges() -> void:
 		if under_r != &"":
 			_add_edge(under_r, jp_r, EdgeType.WALK)
 			_add_edge(jp_r, under_r, EdgeType.WALK)
-		_add_jump_edge_if_reachable(jp_l, pl)
-		_add_jump_edge_if_reachable(jp_r, pr)
-		_add_jump_edge_if_reachable(pl, jp_l)
-		_add_jump_edge_if_reachable(pr, jp_r)
+
+		_add_edge_if_reachable(jp_l, pl)
+		_add_edge_if_reachable(jp_r, pr)
+		_add_edge_if_reachable(pl, jp_l)
+		_add_edge_if_reachable(pr, jp_r)
 
 func get_section_ids() -> Array:
 	return _positions.keys()
@@ -326,6 +318,24 @@ func get_heuristic(from_id: StringName, to_id: StringName) -> float:
 	var a: Vector2 = _positions.get(from_id, Vector2.ZERO)
 	var b: Vector2 = _positions.get(to_id, Vector2.ZERO)
 	return a.distance_to(b)
+
+# Debug: edge colors and legend for draw callers (walk=cyan, jump=red, fall=green).
+func get_debug_edge_color(type: EdgeType) -> Color:
+	match type:
+		EdgeType.WALK:
+			return Color.CYAN
+		EdgeType.JUMP:
+			return Color.RED
+		EdgeType.FALL:
+			return Color.GREEN
+	return Color.CYAN
+
+func get_debug_legend_entries() -> Array:
+	return [
+		{ label = "Walk", color = get_debug_edge_color(EdgeType.WALK) },
+		{ label = "Jump", color = get_debug_edge_color(EdgeType.JUMP) },
+		{ label = "Fall", color = get_debug_edge_color(EdgeType.FALL) }
+	]
 
 # Returns path from from_id to to_id (inclusive), or empty if no path.
 func find_path(from_id: StringName, to_id: StringName) -> Array[StringName]:
