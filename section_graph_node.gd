@@ -81,12 +81,17 @@ func _draw() -> void:
 			if from_pos == Vector2.ZERO or to_pos == Vector2.ZERO:
 				continue
 
-			var dir := (to_pos - from_pos).normalized()
-			var perp := Vector2(-dir.y, dir.x)
-			var k: int = str(sid).hash() + str(neighbor.to).hash()
-			var offset_amount: float = randf_range(-5.0, 5.0)
-			var a := from_pos + perp * offset_amount
-			var b := to_pos + perp * offset_amount
+			var a: Vector2
+			var b: Vector2
+			if Engine.is_editor_hint():
+				var dir := (to_pos - from_pos).normalized()
+				var perp := Vector2(-dir.y, dir.x)
+				var offset_amount: float = randf_range(-15.0, 15.0)
+				a = from_pos + perp * offset_amount
+				b = to_pos + perp * offset_amount
+			else:
+				a = from_pos
+				b = to_pos
 
 			var c: Color = graph.get_debug_edge_color(neighbor.type)
 			draw_line(a, b, c)

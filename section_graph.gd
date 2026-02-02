@@ -29,6 +29,7 @@ func set_root(root: Node2D) -> void:
 	_sanitize_points()
 	_build_edges()
 	_sanitize_edges()
+	_flatten_horizontal_sections()
 
 func _discover_platforms(root: Node2D) -> Array[StaticBody2D]:
 	var list: Array[StaticBody2D] = []
@@ -73,6 +74,54 @@ func _sanitize_edges() -> void:
 			seen_walk[key] = true
 		keep.append(e)
 	_edges = keep
+
+func _flatten_horizontal_sections() -> void:
+	# Per platform: gather horizontal section IDs and WALK edges between them, remove those edges, rebuild linear L→R chain.
+	var to_remove: Array[Dictionary] = []
+	for p in _platforms:
+		var pair: Array = _node_to_sections.get(p, [])
+		if pair.size() < 2:
+			continue
+		var left_sid: StringName = pair[0]
+		var right_sid: StringName = pair[1]
+		var horizontal_ids: Array[StringName] = []
+		var seen: Dictionary = {}
+		for sid in [left_sid, right_sid]:
+			if not seen.get(sid, false):
+				seen[sid] = true
+				horizontal_ids.append(sid)
+		for e in _edges:
+			if e.type != EdgeType.WALK:
+				continue
+			var from_in: bool = e.from in horizontal_ids
+			var to_in: bool = e.to in horizontal_ids
+			if from_in and to_in:
+				to_remove.append(e)
+	var keep: Array[Dictionary] = []
+	for e in _edges:
+		var remove_it: bool = false
+		for r in to_remove:
+			if e.from == r.from and e.to == r.to and e.type == r.type:
+				remove_it = true
+				break
+		if not remove_it:
+			keep.append(e)
+	_edges = keep
+
+	for p in _platforms:
+		var pair: Array = _node_to_sections.get(p, [])
+		if pair.size() < 2:
+			continue
+		var horizontal_ids: Array[StringName] = []
+		var seen: Dictionary = {}
+		for sid in [pair[0], pair[1]]:
+			if not seen.get(sid, false):
+				seen[sid] = true
+				horizontal_ids.append(sid)
+		horizontal_ids.sort_custom(func(a: StringName, b: StringName) -> bool: return _positions.get(a, Vector2.ZERO).x < _positions.get(b, Vector2.ZERO).x)
+		for j in range(horizontal_ids.size() - 1):
+			_add_edge(horizontal_ids[j], horizontal_ids[j + 1], EdgeType.WALK)
+			_add_edge(horizontal_ids[j + 1], horizontal_ids[j], EdgeType.WALK)
 
 func _add_edge_if_reachable(from_id: StringName, to_id: StringName) -> void:
 	var from_pos: Vector2 = _positions.get(from_id, Vector2.ZERO)

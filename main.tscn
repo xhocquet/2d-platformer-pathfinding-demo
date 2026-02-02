@@ -53,7 +53,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform2" type="StaticBody2D" parent="."]
-position = Vector2(600, 355.45853)
+position = Vector2(594, 353.4559)
 scale = Vector2(0.6400484, 0.45145908)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform2"]
