@@ -1,14 +1,21 @@
 @tool
+class_name SectionGraphNode
 extends Node2D
 
 @export var debug_draw := true
 
 var graph: SectionGraph
 var _last_source_positions: Dictionary = {}  # node path -> Vector2 (editor only)
+var _player: CharacterBody2D
+var _enemy: CharacterBody2D
+const RADIUS: float = 12.0
+const SEGMENTS: int = 16
 
 func _ready() -> void:
 	graph = SectionGraph.new()
 	graph.set_root(get_parent())
+	_player = get_parent().get_node("Player") as CharacterBody2D
+	_enemy = get_parent().get_node("Enemy") as CharacterBody2D
 	queue_redraw()
 
 # Same criteria as SectionGraph: PlatformN StaticBody2D with CollisionShape2D + RectangleShape2D
@@ -32,41 +39,55 @@ func _source_positions_changed(new_positions: Dictionary) -> bool:
 		return true
 
 	for path in new_positions:
-		if not _last_source_positions.has(path) or not _last_source_positions[path].is_equal_approx(new_positions[path]):
+		if (
+			not _last_source_positions.has(path) or
+			not _last_source_positions[path].is_equal_approx(new_positions[path])
+		):
 			return true
 
 	return false
 
 func _process(_delta: float) -> void:
-	if not Engine.is_editor_hint():
+	if Engine.is_editor_hint():
+		var positions := _get_source_positions()
+		if not _source_positions_changed(positions):
+			return
+		_last_source_positions = positions
+		graph = SectionGraph.new()
+		graph.set_root(get_parent())
+		queue_redraw()
 		return
 
-	var positions := _get_source_positions()
-	if not _source_positions_changed(positions):
-		return
-
-	_last_source_positions = positions
-	graph = SectionGraph.new()
-	graph.set_root(get_parent())
 	queue_redraw()
 
 func _draw() -> void:
-	if not debug_draw or graph == null:
-		return
+
+	var player_sid: StringName = _player.get_current_section_id()
+	var enemy_sid: StringName = _enemy.get_current_section_id()
 
 	for sid in graph.get_section_ids():
-		var pos := graph.get_section_position(sid)
-		if pos == Vector2.ZERO:
+		var from_pos := graph.get_section_position(sid)
+		if from_pos == Vector2.ZERO:
 			continue
-		draw_circle(pos, 12.0, Color.GREEN)
-		draw_arc(pos, 14.0, 0.0, TAU, 8, Color.WHITE)
+		draw_circle(from_pos, RADIUS, Color.GREEN)
+		# Left half π/2→3π/2, right half 3π/2→π/2+2π (sweep through 0)
+		if sid == enemy_sid:
+			_draw_filled_half_circle(from_pos, RADIUS, PI / 2.0, 3.0 * PI / 2.0, Color.RED)
+		if sid == player_sid:
+			_draw_filled_half_circle(from_pos, RADIUS, 3.0 * PI / 2.0, PI / 2.0 + TAU, Color.BLUE)
 
-	for sid in graph.get_section_ids():
 		for neighbor in graph.get_neighbors(sid):
-			var from_pos := graph.get_section_position(sid)
 			var to_pos := graph.get_section_position(neighbor.to)
 			if from_pos == Vector2.ZERO or to_pos == Vector2.ZERO:
 				continue
 
 			var c: Color = Color.YELLOW if neighbor.type == SectionGraph.EdgeType.JUMP else Color.ORANGE
 			draw_line(from_pos, to_pos, c)
+
+func _draw_filled_half_circle(center: Vector2, radius: float, start_angle: float, end_angle: float, color: Color) -> void:
+	var points: PackedVector2Array = [center]
+	for i in SEGMENTS + 1:
+		var t: float = float(i) / float(SEGMENTS)
+		var a: float = start_angle + t * (end_angle - start_angle)
+		points.append(center + Vector2(cos(a), sin(a)) * radius)
+	draw_polygon(points, [color])

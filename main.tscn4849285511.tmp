@@ -112,7 +112,7 @@ color = Color(0.2, 0.5, 0.9, 1)
 polygon = PackedVector2Array(24, 0, 22.17, 6.21, 16.97, 11.31, 10.76, 13.14, 4.23, 11.31, -1.03, 6.21, -2.76, 0, -1.03, -6.21, 4.23, -11.31, 10.76, -13.14, 16.97, -11.31, 22.17, -6.21)
 
 [node name="Enemy" type="CharacterBody2D" parent="."]
-position = Vector2(1037, 600.7749)
+position = Vector2(1037, 602.77747)
 script = ExtResource("2_script")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Enemy"]

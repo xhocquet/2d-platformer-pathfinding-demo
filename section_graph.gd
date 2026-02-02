@@ -13,7 +13,7 @@ var _platforms: Array[StaticBody2D] = []
 var _root: Node2D
 # Max vertical rise for jump edges; edges exceeding this are not added (match player jump_height).
 var max_jump_height: float = 220.0
-# Horizontal offset of jump points from ledge edge (away from ledge; left/right edge -> move that way).
+# Horizontal offset of jump points from ledge edge
 var jump_point_offset: float = 40.0
 # Merge points within this distance (≈75% overlap if points had this radius).
 var _collapse_radius: float = 20.0
@@ -68,7 +68,6 @@ func _register_positions_from_platforms() -> void:
 		_positions[right_sid] = Vector2(n.global_position.x + ext.x, top_y)
 		_node_to_sections[n] = [left_sid, right_sid]
 
-
 func _sanitize_edges() -> void:
 	var keep: Array[Dictionary] = []
 	for e in _edges:
@@ -85,7 +84,6 @@ func _add_jump_edge_if_reachable(from_id: StringName, to_id: StringName) -> void
 	if rise > max_jump_height:
 		return
 	_add_edge(from_id, to_id, EdgeType.JUMP)
-
 
 func _sanitize_points() -> void:
 	var min_x := INF
@@ -289,9 +287,6 @@ func get_section_position(section_id: StringName) -> Vector2:
 	return _positions.get(section_id, Vector2.ZERO)
 
 func get_section_under_body(body: CharacterBody2D) -> StringName:
-	if _root == null:
-		return &""
-
 	if not body.is_on_floor():
 		return &""
 
