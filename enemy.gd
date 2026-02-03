@@ -18,6 +18,7 @@ var _wants_jump_press: bool = false
 var _jump_phase: JumpPhase = JumpPhase.JUMP_PRESS
 var _jump_start_y: float = 0.0
 var _jump_peak_y: float = 0.0
+var _jump_back_out_dir: float = 0.0  # if inside ledge, move this way until peak (-1, 0, 1)
 
 func _ready() -> void:
 	_player = get_parent().get_node("Player") as CharacterBody2D
@@ -35,9 +36,12 @@ func _get_move_input() -> float:
 	if _ai_state == AiState.TRAVERSING_EDGE and _edge_to != &"":
 		var target_pos: Vector2 = _graph.get_section_position(_edge_to)
 		return signf(target_pos.x - global_position.x)
-	if _ai_state == AiState.JUMP_SEQUENCE and _jump_phase == JumpPhase.AIR_CONTROL and _edge_to != &"":
-		var target_pos: Vector2 = _graph.get_section_position(_edge_to)
-		return signf(target_pos.x - global_position.x)
+	if _ai_state == AiState.JUMP_SEQUENCE:
+		if _jump_back_out_dir != 0.0 and (_jump_phase == JumpPhase.JUMP_PRESS or _jump_phase == JumpPhase.ASCENT):
+			return _jump_back_out_dir
+		if _jump_phase == JumpPhase.AIR_CONTROL and _edge_to != &"":
+			var target_pos: Vector2 = _graph.get_section_position(_edge_to)
+			return signf(target_pos.x - global_position.x)
 	if _ai_state == AiState.STANDING and _path.size() == 1:
 		return signf(_player.global_position.x - global_position.x)
 	return 0.0
@@ -119,6 +123,7 @@ func _stand_still() -> void:
 	_ai_state = AiState.STANDING
 	_edge_from = &""
 	_edge_to = &""
+	_jump_back_out_dir = 0.0
 
 func _walk_from_edge_to_edge(edge_from: StringName, edge_to: StringName) -> void:
 	_edge_from = edge_from
@@ -133,12 +138,32 @@ func _start_jump_sequence(edge_from: StringName, edge_to: StringName) -> void:
 	_jump_start_y = global_position.y
 	_jump_peak_y = global_position.y
 	_wants_jump_press = true
+	var pos_to: Vector2 = _graph.get_section_position(edge_to)
+	var ledge_min_x: float = pos_to.x
+	var ledge_max_x: float = pos_to.x
+	for nb in _graph.get_neighbors(edge_to):
+		if nb.type == SectionGraph.EdgeType.WALK:
+			var pos_nb: Vector2 = _graph.get_section_position(nb.to)
+			ledge_min_x = minf(pos_to.x, pos_nb.x)
+			ledge_max_x = maxf(pos_to.x, pos_nb.x)
+			break
+	var pos_from: Vector2 = _graph.get_section_position(edge_from)
+	var ledge_center_x: float = (ledge_min_x + ledge_max_x) * 0.5
+	var approach_from_left: bool = pos_from.x < ledge_center_x
+	var edge_x: float = ledge_min_x if approach_from_left else ledge_max_x
+	var inside: bool = (approach_from_left and global_position.x >= edge_x) or (not approach_from_left and global_position.x <= edge_x)
+	if inside:
+		_jump_back_out_dir = -1.0 if approach_from_left else 1.0
+	else:
+		_jump_back_out_dir = 0.0
+	print("[Enemy] jump_start from=", edge_from, " to=", edge_to, " pos=", global_position, " ledge_x=[", ledge_min_x, ",", ledge_max_x, "] approach_left=", approach_from_left, " edge_x=", edge_x, " inside=", inside, " back_out_dir=", _jump_back_out_dir)
 
 func _tick_jump_sequence() -> void:
 	if _jump_phase == JumpPhase.JUMP_PRESS:
 		if not is_on_floor():
 			_jump_phase = JumpPhase.ASCENT
 			_jump_peak_y = global_position.y
+			print("[Enemy] jump phase -> ASCENT back_out_dir=", _jump_back_out_dir)
 	elif _jump_phase == JumpPhase.ASCENT:
 		if is_on_floor():
 			_current_node_id = _graph.get_section_under_body(self)
