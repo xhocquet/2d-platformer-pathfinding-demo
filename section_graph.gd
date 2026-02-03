@@ -5,18 +5,14 @@ extends RefCounted
 # Edge type: walk (same level / drop off), fall, jump
 enum EdgeType { WALK, FALL, JUMP }
 
-# from_id, to_id, type
-var _edges: Array[Dictionary] = []
+var _edges: Array[Dictionary] = [] # from_id, to_id, type
 var _positions: Dictionary = {}  # section_id -> Vector2 (filled when root set)
 var _node_to_sections: Dictionary = {}  # Node -> [section_id_left, section_id_right]
 var _platforms: Array[StaticBody2D] = []
 var _root: Node2D
-# Max vertical rise for jump edges; edges exceeding this are not added (match player jump_height).
-var max_jump_height: float = 220.0
-# Horizontal offset of jump points from ledge edge
-var jump_point_offset: float = 40.0
-# Merge points within this distance (≈75% overlap if points had this radius).
-var _collapse_radius: float = 20.0
+var max_jump_height: float = 220.0 # Max vertical rise for jump edges
+var jump_point_offset: float = 40.0 # Horizontal offset of jump points from ledge edge
+var _collapse_radius: float = 20.0 # Merge points within this distance
 
 func set_root(root: Node2D) -> void:
 	_root = root
@@ -29,8 +25,6 @@ func set_root(root: Node2D) -> void:
 	_sanitize_points()
 	_build_edges()
 	_sanitize_edges()
-	# _flatten_horizontal_sections()
-	print(_format_graph())
 
 func _discover_platforms(root: Node2D) -> Array[StaticBody2D]:
 	var list: Array[StaticBody2D] = []
@@ -154,7 +148,6 @@ func _build_edges() -> void:
 		var pname: StringName = p.name
 		var pl := StringName(str(pname) + "_L")
 		var pr := StringName(str(pname) + "_R")
-		# _add_edge(pl, pr, EdgeType.WALK)
 
 		var pair: Array = _node_to_sections.get(p, [])
 		if pair.size() >= 2:
@@ -179,25 +172,16 @@ func _build_edges() -> void:
 					var q_top_y: float = ql.y
 					if x < q_left_x - _SEGMENT_X_TOLERANCE or x > q_right_x + _SEGMENT_X_TOLERANCE or q_top_y <= y:
 						continue
+
 					var under_section: StringName = _get_section_at_pos(x, q_top_y)
 					if under_section == &"" or under_section == sid:
 						continue
+
 					_add_edge_if_reachable(sid, under_section)
 					_add_edge_if_reachable(under_section, sid)
 
 		var jp_l := StringName(str(pname) + "_L_jump")
 		var jp_r := StringName(str(pname) + "_R_jump")
-		var jp_l_pos: Vector2 = _positions.get(jp_l, Vector2.ZERO)
-		var jp_r_pos: Vector2 = _positions.get(jp_r, Vector2.ZERO)
-		var under_l := _get_section_at_pos(jp_l_pos.x, jp_l_pos.y)
-		var under_r := _get_section_at_pos(jp_r_pos.x, jp_r_pos.y)
-
-		# if under_l != &"":
-		# 	_add_edge(under_l, jp_l, EdgeType.WALK)
-		# 	_add_edge(jp_l, under_l, EdgeType.WALK)
-		# if under_r != &"":
-		# 	_add_edge(under_r, jp_r, EdgeType.WALK)
-		# 	_add_edge(jp_r, under_r, EdgeType.WALK)
 
 		_add_edge_if_reachable(jp_l, pl)
 		_add_edge_if_reachable(jp_r, pr)
@@ -210,10 +194,10 @@ func _build_edges() -> void:
 			var pos_b = _positions.get(b, Vector2.ZERO)
 			return pos_a.x < pos_b.x
 		)
-		# Add walk edges between each pair of platform nodes, left to right.
-		print("Platform node list size for platform '%s': %d" % [str(p.name), platform_nodes.size()])
+		# Add walk edges between each pair of platform nodes, both directions.
 		for i in range(platform_nodes.size() - 1):
 			_add_edge(platform_nodes[i], platform_nodes[i + 1], EdgeType.WALK)
+			_add_edge(platform_nodes[i + 1], platform_nodes[i], EdgeType.WALK)
 
 func _sanitize_edges() -> void:
 	var keep: Array[Dictionary] = []
@@ -224,60 +208,12 @@ func _sanitize_edges() -> void:
 		if absf(a.y - b.y) > max_jump_height:
 			continue
 		if e.type == EdgeType.WALK:
-			var key: String = str(e.from) + "|" + str(e.to) if str(e.from) < str(e.to) else str(e.to) + "|" + str(e.from)
+			var key: String = str(e.from) + "|" + str(e.to)
 			if seen_walk.has(key):
 				continue
 			seen_walk[key] = true
 		keep.append(e)
 	_edges = keep
-
-func _flatten_horizontal_sections() -> void:
-	# Per platform: gather horizontal section IDs and WALK edges between them, remove those edges, rebuild linear L→R chain.
-	var to_remove: Array[Dictionary] = []
-	for p in _platforms:
-		var pair: Array = _node_to_sections.get(p, [])
-		if pair.size() < 2:
-			continue
-		var left_sid: StringName = pair[0]
-		var right_sid: StringName = pair[1]
-		var horizontal_ids: Array[StringName] = []
-		var seen: Dictionary = {}
-		for sid in [left_sid, right_sid]:
-			if not seen.get(sid, false):
-				seen[sid] = true
-				horizontal_ids.append(sid)
-		for e in _edges:
-			if e.type != EdgeType.WALK:
-				continue
-			var from_in: bool = e.from in horizontal_ids
-			var to_in: bool = e.to in horizontal_ids
-			if from_in and to_in:
-				to_remove.append(e)
-	var keep: Array[Dictionary] = []
-	for e in _edges:
-		var remove_it: bool = false
-		for r in to_remove:
-			if e.from == r.from and e.to == r.to and e.type == r.type:
-				remove_it = true
-				break
-		if not remove_it:
-			keep.append(e)
-	_edges = keep
-
-	for p in _platforms:
-		var pair: Array = _node_to_sections.get(p, [])
-		if pair.size() < 2:
-			continue
-		var horizontal_ids: Array[StringName] = []
-		var seen: Dictionary = {}
-		for sid in [pair[0], pair[1]]:
-			if not seen.get(sid, false):
-				seen[sid] = true
-				horizontal_ids.append(sid)
-		horizontal_ids.sort_custom(func(a: StringName, b: StringName) -> bool: return _positions.get(a, Vector2.ZERO).x < _positions.get(b, Vector2.ZERO).x)
-		for j in range(horizontal_ids.size() - 1):
-			_add_edge(horizontal_ids[j], horizontal_ids[j + 1], EdgeType.WALK)
-			_add_edge(horizontal_ids[j + 1], horizontal_ids[j], EdgeType.WALK)
 
 func _add_edge_if_reachable(from_id: StringName, to_id: StringName) -> void:
 	var from_pos: Vector2 = _positions.get(from_id, Vector2.ZERO)
@@ -495,29 +431,3 @@ func _get_platform_sections(p: StaticBody2D) -> Array[StringName]:
 		if left_x <= p_right and p_left <= right_x:
 			out.append(sid)
 	return out
-
-func _format_graph() -> String:
-	var ids: Array = get_section_ids()
-	ids.sort_custom(func(a: StringName, b: StringName) -> bool:
-		var pa: Vector2 = _positions.get(a, Vector2.ZERO)
-		var pb: Vector2 = _positions.get(b, Vector2.ZERO)
-		if not is_equal_approx(pa.y, pb.y):
-			return pa.y < pb.y
-		return pa.x < pb.x
-	)
-	var parts: PackedStringArray = []
-	for sid in ids:
-		var pos: Vector2 = _positions.get(sid, Vector2.ZERO)
-		parts.append("%s(%.0f,%.0f)" % [sid, pos.x, pos.y])
-	var lines: PackedStringArray = ["Sections: " + ", ".join(parts)]
-	var edge_str: PackedStringArray = []
-	var type_char: String = ""
-	for e in _edges:
-		match e.type:
-			EdgeType.WALK: type_char = "W"
-			EdgeType.JUMP: type_char = "J"
-			EdgeType.FALL: type_char = "F"
-			_: type_char = "?"
-		edge_str.append("%s->%s:%s" % [e.from, e.to, type_char])
-	lines.append("Edges: " + ", ".join(edge_str))
-	return "\n".join(lines)

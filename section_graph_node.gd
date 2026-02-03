@@ -12,8 +12,10 @@ const RADIUS: float = 12.0
 const SEGMENTS: int = 16
 const EDGE_DOT_RADIUS: float = 4.0
 
-func _ready() -> void:
+func _init() -> void:
 	graph = SectionGraph.new()
+
+func _ready() -> void:
 	graph.set_root(get_parent())
 	_player = get_parent().get_node("Player") as CharacterBody2D
 	_enemy = get_parent().get_node("Enemy") as CharacterBody2D
