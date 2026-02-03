@@ -8,9 +8,11 @@ var graph: SectionGraph
 var _last_source_positions: Dictionary = {}  # node path -> Vector2 (editor only)
 var _player: CharacterBody2D
 var _enemy: CharacterBody2D
+
 const RADIUS: float = 12.0
 const SEGMENTS: int = 16
-const EDGE_DOT_RADIUS: float = 4.0
+const EDGE_ARROW_LENGTH: float = 8.0
+const EDGE_ARROW_WIDTH: float = 6.0
 
 func _init() -> void:
 	graph = SectionGraph.new()
@@ -100,8 +102,9 @@ func _draw() -> void:
 
 			var c: Color = graph.get_debug_edge_color(neighbor.type)
 			draw_line(a, b, c)
-			draw_circle(a, EDGE_DOT_RADIUS, Color.YELLOW)
-			draw_circle(b, EDGE_DOT_RADIUS, Color.YELLOW)
+			var dir_to_toward_from := (a - b).normalized()
+			_draw_direction_triangle(a, dir_to_toward_from, Color.YELLOW)
+			_draw_direction_triangle(b, dir_to_toward_from, Color.YELLOW)
 
 	if debug_draw:
 		_draw_debug_legend()
@@ -124,3 +127,9 @@ func _draw_filled_half_circle(center: Vector2, radius: float, start_angle: float
 		var a: float = start_angle + t * (end_angle - start_angle)
 		points.append(center + Vector2(cos(a), sin(a)) * radius)
 	draw_polygon(points, [color])
+
+func _draw_direction_triangle(tip: Vector2, dir: Vector2, color: Color) -> void:
+	var perp := Vector2(-dir.y, dir.x)
+	var back := tip - dir * EDGE_ARROW_LENGTH
+	var half_w: float = EDGE_ARROW_WIDTH * 0.5
+	draw_polygon(PackedVector2Array([tip, back + perp * half_w, back - perp * half_w]), [color])
