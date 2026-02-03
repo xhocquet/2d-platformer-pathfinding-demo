@@ -62,8 +62,12 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	var player_sid: StringName = _player.get_current_section_id() if _player else &""
-	var enemy_sid: StringName = _enemy.get_current_section_id() if _enemy else &""
+	# In editor, player/enemy are placeholders; skip section lookup to avoid placeholder call errors.
+	var player_sid: StringName = &""
+	var enemy_sid: StringName = &""
+	if not Engine.is_editor_hint():
+		player_sid = _player.get_current_section_id() if _player else &""
+		enemy_sid = _enemy.get_current_section_id() if _enemy else &""
 
 	for sid in graph.get_section_ids():
 		var from_pos := graph.get_section_position(sid)
