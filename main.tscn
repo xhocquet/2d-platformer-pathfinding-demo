@@ -29,7 +29,7 @@ polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform7" type="StaticBody2D" parent="."]
 position = Vector2(579, 647)
-scale = Vector2(9.692061, 0.3606403)
+scale = Vector2(9.372062, 0.3606403)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform7"]
 shape = SubResource("RectangleShape2D_platform")
@@ -97,7 +97,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Wall" type="StaticBody2D" parent="."]
-position = Vector2(1164, 610.7879)
+position = Vector2(1144, 610.78784)
 rotation = -1.5707964
 scale = Vector2(0.5599973, 0.27999997)
 
@@ -112,7 +112,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Wall2" type="StaticBody2D" parent="."]
-position = Vector2(-6, 610.78784)
+position = Vector2(11, 610.7878)
 rotation = -1.5707964
 scale = Vector2(0.5599973, 0.27999997)
 

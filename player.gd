@@ -22,6 +22,7 @@ func _physics_process(delta: float) -> void:
 
 	var move: float = _get_move_input()
 	velocity.x = move * _get_move_speed()
+
 	if is_on_floor():
 		velocity.y = 0.0
 	else:

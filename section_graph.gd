@@ -123,7 +123,8 @@ func get_debug_legend_entries() -> Array:
 		{ label = "Fall", color = get_debug_edge_color(EdgeType.FALL) }
 	]
 
-func _discover_platforms(root: Node2D) -> Array[StaticBody2D]:
+# PlatformN StaticBody2D with CollisionShape2D + RectangleShape2D; shared by SectionGraph and SectionGraphNode.
+static func get_platform_bodies(root: Node2D) -> Array[StaticBody2D]:
 	var list: Array[StaticBody2D] = []
 	for child in root.get_children():
 		var body := child as StaticBody2D
@@ -133,6 +134,10 @@ func _discover_platforms(root: Node2D) -> Array[StaticBody2D]:
 		if shape == null or not (shape.shape is RectangleShape2D):
 			continue
 		list.append(body)
+	return list
+
+func _discover_platforms(root: Node2D) -> Array[StaticBody2D]:
+	var list: Array[StaticBody2D] = get_platform_bodies(root)
 	list.sort_custom(func(a: StaticBody2D, b: StaticBody2D) -> bool: return a.global_position.x < b.global_position.x)
 	return list
 

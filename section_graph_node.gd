@@ -23,20 +23,11 @@ func _ready() -> void:
 	_enemy = get_parent().get_node("Enemy") as CharacterBody2D
 	queue_redraw()
 
-# Same criteria as SectionGraph: PlatformN StaticBody2D with CollisionShape2D + RectangleShape2D
 func _get_source_positions() -> Dictionary:
 	var out: Dictionary = {}
-	for child in get_parent().get_children():
-		var body: StaticBody2D = child as StaticBody2D
-		if body == null or not str(body.name).begins_with("Platform"):
-			continue
-
-		var shape: CollisionShape2D = body.get_node_or_null("CollisionShape2D") as CollisionShape2D
-		if shape == null or not (shape.shape is RectangleShape2D):
-			continue
-
-		out[get_parent().get_path_to(body)] = body.global_position
-
+	var parent: Node = get_parent()
+	for body in SectionGraph.get_platform_bodies(parent):
+		out[parent.get_path_to(body)] = body.global_position
 	return out
 
 func _source_positions_changed(new_positions: Dictionary) -> bool:
