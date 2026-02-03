@@ -73,7 +73,6 @@ func _calculate_path() -> Array[StringName]:
 		print("[Enemy] path: no to_id (player section empty)")
 		return []
 	var path: Array[StringName] = _graph.find_path(from_id, to_id)
-	print("[Enemy] path: from=", from_id, " to=", to_id, " result size=", path.size())
 	return path
 
 func _process_ai(_delta: float) -> void:
@@ -111,10 +110,8 @@ func _tick_traversing_edge() -> void:
 
 	var target_pos: Vector2 = _graph.get_section_position(_edge_to)
 	var arrived: bool = global_position.distance_to(target_pos) <= ARRIVAL_DIST
-	if is_on_floor():
-		var section_under: StringName = _graph.get_section_under_body(self)
-		if section_under == _edge_to:
-			arrived = true
+	if is_on_floor() and _current_section_id == _edge_to:
+		arrived = true
 	if arrived:
 		_current_node_id = _edge_to
 		_stand_still()
@@ -156,17 +153,15 @@ func _start_jump_sequence(edge_from: StringName, edge_to: StringName) -> void:
 		_jump_back_out_dir = -1.0 if approach_from_left else 1.0
 	else:
 		_jump_back_out_dir = 0.0
-	print("[Enemy] jump_start from=", edge_from, " to=", edge_to, " pos=", global_position, " ledge_x=[", ledge_min_x, ",", ledge_max_x, "] approach_left=", approach_from_left, " edge_x=", edge_x, " inside=", inside, " back_out_dir=", _jump_back_out_dir)
 
 func _tick_jump_sequence() -> void:
 	if _jump_phase == JumpPhase.JUMP_PRESS:
 		if not is_on_floor():
 			_jump_phase = JumpPhase.ASCENT
 			_jump_peak_y = global_position.y
-			print("[Enemy] jump phase -> ASCENT back_out_dir=", _jump_back_out_dir)
 	elif _jump_phase == JumpPhase.ASCENT:
 		if is_on_floor():
-			_current_node_id = _graph.get_section_under_body(self)
+			_current_node_id = _current_section_id
 			_stand_still()
 			return
 		_jump_peak_y = minf(_jump_peak_y, global_position.y)
@@ -176,5 +171,5 @@ func _tick_jump_sequence() -> void:
 			_jump_phase = JumpPhase.AIR_CONTROL
 	elif _jump_phase == JumpPhase.AIR_CONTROL:
 		if is_on_floor():
-			_current_node_id = _graph.get_section_under_body(self)
+			_current_node_id = _current_section_id
 			_stand_still()

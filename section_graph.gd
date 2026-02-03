@@ -34,27 +34,31 @@ func get_section_ids() -> Array:
 func get_section_position(section_id: StringName) -> Vector2:
 	return _positions.get(section_id, Vector2.ZERO)
 
+const _SECTION_RAY_LENGTH := 40.0
+const _SECTION_RAY_OFFSET := 14.0  # horizontal fallback when center ray misses (e.g. near ledge)
+
 func get_section_under_body(body: CharacterBody2D) -> StringName:
 	if not body.is_on_floor():
 		return &""
 
 	var space_state: PhysicsDirectSpaceState2D = body.get_world_2d().direct_space_state
-	var from_pos := body.global_position
-	var to_pos := from_pos + Vector2(0, 40)
-	var q := PhysicsRayQueryParameters2D.create(from_pos, to_pos)
-	q.exclude = [body.get_rid()]
-	var result := space_state.intersect_ray(q)
-	if result.is_empty():
-		return &""
-
-	var sections: Array = _node_to_sections.get(result.collider, [])
-	if sections.is_empty():
-		return &""
-
-	var x := body.global_position.x
-	var left_pos: Vector2 = _positions.get(sections[0], Vector2.ZERO)
-	var right_pos: Vector2 = _positions.get(sections[1], Vector2.ZERO)
-	return sections[0] if x < (left_pos.x + right_pos.x) / 2.0 else sections[1]
+	var origin := body.global_position
+	var try_origins: Array[Vector2] = [origin, origin + Vector2(-_SECTION_RAY_OFFSET, 0), origin + Vector2(_SECTION_RAY_OFFSET, 0)]
+	for from_pos in try_origins:
+		var to_pos := from_pos + Vector2(0, _SECTION_RAY_LENGTH)
+		var q := PhysicsRayQueryParameters2D.create(from_pos, to_pos)
+		q.exclude = [body.get_rid()]
+		var result := space_state.intersect_ray(q)
+		if result.is_empty():
+			continue
+		var sections: Array = _node_to_sections.get(result.collider, [])
+		if sections.is_empty():
+			continue
+		var x := body.global_position.x
+		var left_pos: Vector2 = _positions.get(sections[0], Vector2.ZERO)
+		var right_pos: Vector2 = _positions.get(sections[1], Vector2.ZERO)
+		return sections[0] if x < (left_pos.x + right_pos.x) / 2.0 else sections[1]
+	return &""
 
 func get_neighbors(section_id: StringName) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
