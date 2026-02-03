@@ -10,9 +10,9 @@ var _player: CharacterBody2D
 var _enemy: CharacterBody2D
 const RADIUS: float = 12.0
 const SEGMENTS: int = 16
+const EDGE_DOT_RADIUS: float = 4.0
 
 func _ready() -> void:
-	z_index = 9000
 	graph = SectionGraph.new()
 	graph.set_root(get_parent())
 	_player = get_parent().get_node("Player") as CharacterBody2D
@@ -62,7 +62,6 @@ func _process(_delta: float) -> void:
 	queue_redraw()
 
 func _draw() -> void:
-	# In editor, player/enemy are placeholders; skip section lookup to avoid placeholder call errors.
 	var player_sid: StringName = &""
 	var enemy_sid: StringName = &""
 	if not Engine.is_editor_hint():
@@ -99,6 +98,8 @@ func _draw() -> void:
 
 			var c: Color = graph.get_debug_edge_color(neighbor.type)
 			draw_line(a, b, c)
+			draw_circle(a, EDGE_DOT_RADIUS, Color.YELLOW)
+			draw_circle(b, EDGE_DOT_RADIUS, Color.YELLOW)
 
 	if debug_draw:
 		_draw_debug_legend()

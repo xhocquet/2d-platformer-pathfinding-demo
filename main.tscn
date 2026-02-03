@@ -16,9 +16,6 @@ radius = 14.035668
 [node name="Node2D" type="Node2D"]
 scale = Vector2(1, 0.99871016)
 
-[node name="SectionGraph" type="Node2D" parent="."]
-script = ExtResource("1_graph_node")
-
 [node name="Platform1" type="StaticBody2D" parent="."]
 position = Vector2(595.99994, 511.65997)
 scale = Vector2(2.4800012, 0.32000488)
@@ -53,7 +50,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform2" type="StaticBody2D" parent="."]
-position = Vector2(594, 353.4559)
+position = Vector2(591, 353.45593)
 scale = Vector2(0.6400484, 0.45145908)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform2"]
@@ -64,7 +61,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform5" type="StaticBody2D" parent="."]
-position = Vector2(292, 248.3203)
+position = Vector2(285, 248.32031)
 scale = Vector2(1.64, 0.27999997)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform5"]
@@ -122,3 +119,6 @@ shape = SubResource("CircleShape2D_enemy")
 position = Vector2(-9, 0)
 color = Color(0.85, 0.25, 0.2, 1)
 polygon = PackedVector2Array(22, 0, 20.36, 5.7, 15.56, 10.5, 9.87, 12.06, 3.88, 10.38, -0.94, 5.7, -2.53, 0, -0.94, -5.7, 3.88, -10.38, 9.87, -12.06, 15.56, -10.5, 20.36, -5.7)
+
+[node name="SectionGraph" type="Node2D" parent="."]
+script = ExtResource("1_graph_node")
