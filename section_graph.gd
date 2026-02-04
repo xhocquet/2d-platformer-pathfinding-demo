@@ -10,6 +10,7 @@ const _SEGMENT_X_TOLERANCE := 2.0
 var _edges: Array[Dictionary] = [] # from_id, to_id, type
 var _positions: Dictionary = {}  # section_id -> Vector2 (filled when root set)
 var _node_to_sections: Dictionary = {}  # Node -> [section_id_left, section_id_right]
+var _platform_to_section_ids: Dictionary = {}  # platform -> Array[StringName] (nodes on that platform)
 var _platforms: Array[StaticBody2D] = []
 var _root: Node2D
 var max_jump_height: float = 220.0 # Max vertical rise for jump edges
@@ -20,6 +21,7 @@ func set_root(root: Node2D) -> void:
 	_root = root
 	_positions.clear()
 	_node_to_sections.clear()
+	_platform_to_section_ids.clear()
 	_edges.clear()
 	_platforms = _discover_platforms(root)
 	_register_positions_from_platforms()
@@ -33,6 +35,9 @@ func get_section_ids() -> Array:
 
 func get_section_position(section_id: StringName) -> Vector2:
 	return _positions.get(section_id, Vector2.ZERO)
+
+func get_sections_for_platform(platform: StaticBody2D) -> Array:
+	return _platform_to_section_ids.get(platform, [])
 
 const _SECTION_RAY_LENGTH := 40.0
 const _SECTION_RAY_OFFSET := 14.0  # horizontal fallback when center ray misses (e.g. near ledge)
@@ -297,10 +302,30 @@ func _build_edges() -> void:
 			var pos_b = _positions.get(b, Vector2.ZERO)
 			return pos_a.x < pos_b.x
 		)
+		_platform_to_section_ids[p] = platform_nodes
 		# Add walk edges between each pair of platform nodes, both directions.
 		for i in range(platform_nodes.size() - 1):
 			_add_edge(platform_nodes[i], platform_nodes[i + 1], EdgeType.WALK)
 			_add_edge(platform_nodes[i + 1], platform_nodes[i], EdgeType.WALK)
+
+	# Radius step: ensure edges between every pair of nodes within max_jump_height of each other.
+	var ids: Array = _positions.keys()
+	for i in range(ids.size()):
+		var a: StringName = ids[i]
+		var pos_a: Vector2 = _positions.get(a, Vector2.ZERO)
+		if pos_a == Vector2.ZERO:
+			continue
+		for j in range(ids.size()):
+			if i == j:
+				continue
+			var b: StringName = ids[j]
+			var pos_b: Vector2 = _positions.get(b, Vector2.ZERO)
+			if pos_b == Vector2.ZERO:
+				continue
+			if pos_a.distance_to(pos_b) > max_jump_height:
+				continue
+			_add_edge_if_reachable(a, b)
+			_add_edge_if_reachable(b, a)
 
 func _sanitize_edges() -> void:
 	var keep: Array[Dictionary] = []
