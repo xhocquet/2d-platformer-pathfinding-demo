@@ -1,5 +1,7 @@
 extends CharacterBody2D
 
+const CLOSEST_SECTION_MAX_DIST: float = 100.0
+
 @export var move_speed: float = 280.0
 @export var jump_height: float = 220.0
 @export var jump_cooldown_time: float = 0.4
@@ -34,6 +36,26 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+func get_current_section_id() -> StringName:
+	return _current_section_id
+
+func _update_closest_section() -> void:
+	var canvas := get_viewport().get_canvas_transform()
+	var player_screen: Vector2 = canvas * global_position
+	var best_id: StringName = &""
+	var best_dist: float = CLOSEST_SECTION_MAX_DIST
+
+	for sid in _graph.get_section_ids():
+		var section_pos: Vector2 = _graph.get_section_position(sid)
+		var section_screen: Vector2 = canvas * section_pos
+		var d: float = player_screen.distance_to(section_screen)
+		if d <= CLOSEST_SECTION_MAX_DIST and d < best_dist:
+			best_dist = d
+			best_id = sid
+
+	if best_id != &"":
+		_current_section_id = best_id
+
 func _get_move_speed() -> float:
 	return move_speed
 
@@ -42,22 +64,3 @@ func _get_move_input() -> float:
 
 func _get_jump_just_pressed() -> bool:
 	return Input.is_action_just_pressed(&"jump")
-
-func _update_closest_section() -> void:
-	var canvas := get_viewport().get_canvas_transform()
-	var player_screen: Vector2 = canvas * global_position
-	var best_id: StringName = &""
-	var best_dist: float = INF
-
-	for sid in _graph.get_section_ids():
-		var section_pos: Vector2 = _graph.get_section_position(sid)
-		var section_screen: Vector2 = canvas * section_pos
-		var d: float = player_screen.distance_to(section_screen)
-		if d < best_dist:
-			best_dist = d
-			best_id = sid
-
-	_current_section_id = best_id
-
-func get_current_section_id() -> StringName:
-	return _current_section_id

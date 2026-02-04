@@ -138,24 +138,23 @@ func _start_jump_sequence(edge_from: StringName, edge_to: StringName) -> void:
 	_wants_jump_press = false
 	_jump_back_out_dir = 0.0
 	# Lead-in walks toward the takeoff edge (our platform’s edge toward the dest), not the section position
-	var pos_to: Vector2 = _graph.get_section_position(edge_to)
-	var ledge_min_x: float = pos_to.x
-	var ledge_max_x: float = pos_to.x
-	for nb in _graph.get_neighbors(edge_to):
-		if nb.type == SectionGraph.EdgeType.WALK:
-			var pos_nb: Vector2 = _graph.get_section_position(nb.to)
-			ledge_min_x = minf(pos_to.x, pos_nb.x)
-			ledge_max_x = maxf(pos_to.x, pos_nb.x)
-			break
+	_lead_in_target_x = _get_lead_in_target_x(edge_from, edge_to)
+
+# Lead-in walks toward the takeoff edge (our platform's edge toward the dest), not the section position.
+func _get_lead_in_target_x(edge_from: StringName, edge_to: StringName) -> float:
+	var ledge: Vector2 = _get_ledge_x_bounds(edge_to)
 	var pos_from: Vector2 = _graph.get_section_position(edge_from)
-	var ledge_center_x: float = (ledge_min_x + ledge_max_x) * 0.5
+	var ledge_center_x: float = (ledge.x + ledge.y) * 0.5
 	var approach_from_left: bool = pos_from.x < ledge_center_x
-	var platform_other_x: float = pos_from.x
-	for nb in _graph.get_neighbors(edge_from):
+	var platform_other_x: float = _get_walk_neighbor_section_x(edge_from)
+	return maxf(pos_from.x, platform_other_x) if approach_from_left else minf(pos_from.x, platform_other_x)
+
+func _get_walk_neighbor_section_x(edge: StringName) -> float:
+	var pos: Vector2 = _graph.get_section_position(edge)
+	for nb in _graph.get_neighbors(edge):
 		if nb.type == SectionGraph.EdgeType.WALK:
-			platform_other_x = _graph.get_section_position(nb.to).x
-			break
-	_lead_in_target_x = maxf(pos_from.x, platform_other_x) if approach_from_left else minf(pos_from.x, platform_other_x)
+			return _graph.get_section_position(nb.to).x
+	return pos.x
 
 func _tick_jump_sequence() -> void:
 	match _jump_phase:
