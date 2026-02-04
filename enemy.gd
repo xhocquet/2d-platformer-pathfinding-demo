@@ -128,17 +128,6 @@ func _tick_traversing_edge() -> void:
 		_current_node_id = _dest_node
 		_stand_still()
 
-func _stand_still() -> void:
-	_ai_state = AiState.STANDING
-	_source_node = &""
-	_dest_node = &""
-	_jump_back_out_dir = 0.0
-
-func _walk_from_edge_to_edge(edge_from: StringName, edge_to: StringName) -> void:
-	_source_node = edge_from
-	_dest_node = edge_to
-	_ai_state = AiState.TRAVERSING_EDGE
-
 func _start_jump_sequence(edge_from: StringName, edge_to: StringName) -> void:
 	_source_node = edge_from
 	_dest_node = edge_to
@@ -169,46 +158,77 @@ func _start_jump_sequence(edge_from: StringName, edge_to: StringName) -> void:
 	_lead_in_target_x = maxf(pos_from.x, platform_other_x) if approach_from_left else minf(pos_from.x, platform_other_x)
 
 func _tick_jump_sequence() -> void:
-	if _jump_phase == JumpPhase.LEAD_IN:
-		if absf(global_position.x - _lead_in_target_x) <= LEAD_IN_DIST:
-			_jump_phase = JumpPhase.JUMP_PRESS
-			_wants_jump_press = true
-			_jump_start_y = global_position.y
-			_jump_peak_y = global_position.y
-			var pos_to: Vector2 = _graph.get_section_position(_dest_node)
-			var ledge_min_x: float = pos_to.x
-			var ledge_max_x: float = pos_to.x
-			for nb in _graph.get_neighbors(_dest_node):
-				if nb.type == SectionGraph.EdgeType.WALK:
-					var pos_nb: Vector2 = _graph.get_section_position(nb.to)
-					ledge_min_x = minf(pos_to.x, pos_nb.x)
-					ledge_max_x = maxf(pos_to.x, pos_nb.x)
-					break
-			var pos_from: Vector2 = _graph.get_section_position(_source_node)
-			var ledge_center_x: float = (ledge_min_x + ledge_max_x) * 0.5
-			var approach_from_left: bool = pos_from.x < ledge_center_x
-			var edge_x: float = ledge_min_x if approach_from_left else ledge_max_x
-			var inside: bool = (approach_from_left and global_position.x >= edge_x) or (not approach_from_left and global_position.x <= edge_x)
-			_jump_back_out_dir = -1.0 if (inside and approach_from_left) else (1.0 if (inside and not approach_from_left) else 0.0)
-	elif _jump_phase == JumpPhase.JUMP_PRESS:
-		if not is_on_floor():
-			_jump_phase = JumpPhase.ASCENT
-			_jump_peak_y = global_position.y
-	elif _jump_phase == JumpPhase.ASCENT:
-		if is_on_floor():
-			_current_node_id = _current_section_id
-			_stand_still()
-			return
-		_jump_peak_y = minf(_jump_peak_y, global_position.y)
-		var height_total: float = _jump_start_y - _jump_peak_y
-		var height_now: float = _jump_start_y - global_position.y
-		if height_total > 0.0 and height_now >= JUMP_AIR_CONTROL_HEIGHT_RATIO * height_total:
-			_jump_phase = JumpPhase.AIR_CONTROL
-	elif _jump_phase == JumpPhase.AIR_CONTROL:
-		if is_on_floor():
-			_current_node_id = _current_section_id
-			_stand_still()
+	match _jump_phase:
+		JumpPhase.LEAD_IN:
+			_tick_jump_lead_in()
+		JumpPhase.JUMP_PRESS:
+			_tick_jump_press()
+		JumpPhase.ASCENT:
+			_tick_jump_ascent()
+		JumpPhase.AIR_CONTROL:
+			_tick_jump_air_control()
 
+func _tick_jump_lead_in() -> void:
+	if absf(global_position.x - _lead_in_target_x) > LEAD_IN_DIST:
+		return
+	_jump_phase = JumpPhase.JUMP_PRESS
+	_wants_jump_press = true
+	_jump_start_y = global_position.y
+	_jump_peak_y = global_position.y
+	var ledge: Vector2 = _get_ledge_x_bounds(_dest_node)
+	_compute_jump_back_out_dir(ledge.x, ledge.y)
+
+func _get_ledge_x_bounds(dest_node: StringName) -> Vector2:
+	var pos_to: Vector2 = _graph.get_section_position(dest_node)
+	var ledge_min_x: float = pos_to.x
+	var ledge_max_x: float = pos_to.x
+	for nb in _graph.get_neighbors(dest_node):
+		if nb.type == SectionGraph.EdgeType.WALK:
+			var pos_nb: Vector2 = _graph.get_section_position(nb.to)
+			ledge_min_x = minf(pos_to.x, pos_nb.x)
+			ledge_max_x = maxf(pos_to.x, pos_nb.x)
+			break
+	return Vector2(ledge_min_x, ledge_max_x)
+
+func _compute_jump_back_out_dir(ledge_min_x: float, ledge_max_x: float) -> void:
+	var pos_from: Vector2 = _graph.get_section_position(_source_node)
+	var ledge_center_x: float = (ledge_min_x + ledge_max_x) * 0.5
+	var approach_from_left: bool = pos_from.x < ledge_center_x
+	var edge_x: float = ledge_min_x if approach_from_left else ledge_max_x
+	var inside: bool = (approach_from_left and global_position.x >= edge_x) or (not approach_from_left and global_position.x <= edge_x)
+	_jump_back_out_dir = -1.0 if (inside and approach_from_left) else (1.0 if (inside and not approach_from_left) else 0.0)
+
+func _tick_jump_press() -> void:
+	if not is_on_floor():
+		_jump_phase = JumpPhase.ASCENT
+		_jump_peak_y = global_position.y
+
+func _tick_jump_ascent() -> void:
+	if is_on_floor():
+		_current_node_id = _current_section_id
+		_stand_still()
+		return
+	_jump_peak_y = minf(_jump_peak_y, global_position.y)
+	var height_total: float = _jump_start_y - _jump_peak_y
+	var height_now: float = _jump_start_y - global_position.y
+	if height_total > 0.0 and height_now >= JUMP_AIR_CONTROL_HEIGHT_RATIO * height_total:
+		_jump_phase = JumpPhase.AIR_CONTROL
+
+func _tick_jump_air_control() -> void:
+	if is_on_floor():
+		_current_node_id = _current_section_id
+		_stand_still()
+
+func _stand_still() -> void:
+	_ai_state = AiState.STANDING
+	_source_node = &""
+	_dest_node = &""
+	_jump_back_out_dir = 0.0
+
+func _walk_from_edge_to_edge(edge_from: StringName, edge_to: StringName) -> void:
+	_source_node = edge_from
+	_dest_node = edge_to
+	_ai_state = AiState.TRAVERSING_EDGE
 
 func _get_move_speed() -> float:
 	return speed

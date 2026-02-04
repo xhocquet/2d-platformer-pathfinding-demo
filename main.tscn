@@ -60,6 +60,28 @@ shape = SubResource("RectangleShape2D_platform")
 color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
+[node name="Platform8" type="StaticBody2D" parent="."]
+position = Vector2(752, 122.15757)
+scale = Vector2(0.6400484, 0.45145908)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform8"]
+shape = SubResource("RectangleShape2D_platform")
+
+[node name="Polygon2D" type="Polygon2D" parent="Platform8"]
+color = Color(0.4, 0.35, 0.25, 1)
+polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
+
+[node name="Platform9" type="StaticBody2D" parent="."]
+position = Vector2(476.99997, 122.15756)
+scale = Vector2(0.6400484, 0.45145908)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Platform9"]
+shape = SubResource("RectangleShape2D_platform")
+
+[node name="Polygon2D" type="Polygon2D" parent="Platform9"]
+color = Color(0.4, 0.35, 0.25, 1)
+polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
+
 [node name="Platform5" type="StaticBody2D" parent="."]
 position = Vector2(285, 248.32031)
 scale = Vector2(1.64, 0.27999997)
