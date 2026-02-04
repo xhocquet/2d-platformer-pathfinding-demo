@@ -11,7 +11,7 @@ var _graph: SectionGraph
 var _current_section_id: StringName
 
 func _ready() -> void:
-	_graph = (get_parent().get_node("SectionGraph") as Node2D).graph
+	_graph = (get_parent().get_node("NaviGraph") as NaviGraph).graph
 
 func _physics_process(delta: float) -> void:
 	_update_closest_section()

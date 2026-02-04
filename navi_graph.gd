@@ -1,11 +1,16 @@
 @tool
-class_name SectionGraphNode
+class_name NaviGraph
 extends Node2D
 
 @export var debug_draw := true
+@export var max_jump_height: float = 220.0 # Max vertical rise for jump edges
+@export var jump_point_offset: float = 40.0 # Horizontal offset of jump points from ledge edge
+@export var max_edge_length: float = 300.0 # Max edge length (0 = no limit)
+@export var collapse_radius: float = 20.0 # Merge points within this distance
 
 var graph: SectionGraph
 var debug_ui: DebugUI
+
 var _last_source_positions: Dictionary = {}  # node path -> Vector2 (editor only)
 var _player: CharacterBody2D
 var _enemy: CharacterBody2D
@@ -17,7 +22,14 @@ func _init() -> void:
 	graph = SectionGraph.new()
 	debug_ui = DebugUI.new()
 
+func _apply_graph_params() -> void:
+	graph.max_jump_height = max_jump_height
+	graph.jump_point_offset = jump_point_offset
+	graph.max_edge_length = max_edge_length
+	graph.collapse_radius = collapse_radius
+
 func _ready() -> void:
+	_apply_graph_params()
 	graph.set_root(get_parent())
 	_player = get_parent().get_node("Player") as CharacterBody2D
 	_enemy = get_parent().get_node("Enemy") as CharacterBody2D
@@ -31,7 +43,7 @@ func _get_source_positions() -> Dictionary:
 		out[parent.get_path_to(body)] = body.global_position
 	return out
 
-func _source_positions_changed(new_positions: Dictionary) -> bool:
+func _node_positions_changed(new_positions: Dictionary) -> bool:
 	if _last_source_positions.size() != new_positions.size():
 		return true
 
@@ -44,16 +56,16 @@ func _source_positions_changed(new_positions: Dictionary) -> bool:
 
 	return false
 
+# In the editor, regenerate the graph when node positions change
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		var positions := _get_source_positions()
-		if not _source_positions_changed(positions):
+		if not _node_positions_changed(positions):
 			return
 		_last_source_positions = positions
 		graph = SectionGraph.new()
+		_apply_graph_params()
 		graph.set_root(get_parent())
-		queue_redraw()
-		return
 
 	queue_redraw()
 
@@ -72,5 +84,6 @@ func _draw() -> void:
 		player_sid = _player.get_current_section_id() if _player else &""
 		enemy_sid = _enemy.get_current_section_id() if _enemy else &""
 
-	debug_ui.draw_section_graph(self, graph, player_sid, enemy_sid)
-	debug_ui.draw_legend(self, graph)
+	if debug_ui:
+		debug_ui.draw_section_graph(self, graph, player_sid, enemy_sid)
+		debug_ui.draw_legend(self, graph)

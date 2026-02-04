@@ -28,7 +28,7 @@ var _lead_in_target_x: float = 0.0  # takeoff edge x we walk toward during LEAD_
 ################################################################################
 func _ready() -> void:
 	_player = get_parent().get_node("Player") as CharacterBody2D
-	_graph = (get_parent().get_node("SectionGraph") as Node2D).graph
+	_graph = (get_parent().get_node("NaviGraph") as NaviGraph).graph
 	call_deferred("_initialize_ai_state")
 
 func _initialize_ai_state() -> void:

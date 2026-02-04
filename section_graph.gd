@@ -15,10 +15,11 @@ var _positions: Dictionary = {}  # section_id -> Vector2 (filled when root set)
 var _node_to_sections: Dictionary = {}  # Node -> [section_id_left, section_id_right]
 var _platforms: Array[StaticBody2D] = []
 var _root: Node2D
-var max_jump_height: float = 220.0 # Max vertical rise for jump edges
-var jump_point_offset: float = 40.0 # Horizontal offset of jump points from ledge edge
-var max_edge_length: float = 300.0 # Max edge length (0 = no limit)
-var _collapse_radius: float = 20.0 # Merge points within this distance
+
+var max_jump_height: float = 220.0
+var jump_point_offset: float = 40.0
+var max_edge_length: float = 300.0
+var collapse_radius: float = 20.0
 
 func set_root(root: Node2D) -> void:
 	_root = root
@@ -222,7 +223,7 @@ func _sanitize_points() -> void:
 			var b: StringName = ids[j]
 			var pa: Vector2 = _positions.get(a, Vector2.ZERO)
 			var pb: Vector2 = _positions.get(b, Vector2.ZERO)
-			if pa.distance_to(pb) < _collapse_radius:
+			if pa.distance_to(pb) < collapse_radius:
 				var ra := _collapse_find(parent, a)
 				var rb := _collapse_find(parent, b)
 				if ra != rb:
@@ -263,6 +264,7 @@ func _build_edges() -> void:
 					continue
 				var x: float = pos.x
 				var y: float = pos.y
+				# Inner platform loop
 				for q in _platforms:
 					if q == p:
 						continue
@@ -327,8 +329,10 @@ func _sanitize_edges() -> void:
 	for e in _edges:
 		var a: Vector2 = _positions.get(e.from, Vector2.ZERO)
 		var b: Vector2 = _positions.get(e.to, Vector2.ZERO)
+		# Prune edges that are too tall to jump
 		if absf(a.y - b.y) > max_jump_height:
 			continue
+		# Prune JUMP edges that are too long
 		if (
 		  max_edge_length > 0.0 and
 			e.type != EdgeType.WALK and
@@ -337,24 +341,23 @@ func _sanitize_edges() -> void:
 		):
 			continue
 		keep.append(e)
+
+	# Cycle edges, refresh cache
 	_edges = keep
 	_edge_cache.clear()
 	for e in _edges:
 		_edge_cache[_edge_key(e.from, e.to, e.type)] = true
 
-# --- Small private helpers ---
-
 func _add_edge_if_reachable(from_id: StringName, to_id: StringName) -> void:
 	var from_pos: Vector2 = _positions.get(from_id, Vector2.ZERO)
 	var to_pos: Vector2 = _positions.get(to_id, Vector2.ZERO)
 	var dy: float = to_pos.y - from_pos.y
-	if dy > 0:
-		if not _is_platform_lr(from_id):
-			return
+
+	# Only allow falling from edge of platforms
+	if dy > 0 and _is_platform_lr(from_id):
 		_add_edge(from_id, to_id, EdgeType.FALL)
-	elif dy < 0 and (from_pos.y - to_pos.y) <= max_jump_height:
-		if not _is_platform_lr(to_id):
-			return
+	# Only allow jumping from edges, and within max_jump_height
+	elif dy < 0 and (from_pos.y - to_pos.y) <= max_jump_height and _is_platform_lr(to_id):
 		_add_edge(from_id, to_id, EdgeType.JUMP)
 
 func _is_platform_lr(section_id: StringName) -> bool:

@@ -1,6 +1,6 @@
 [gd_scene load_steps=7 format=3 uid="uid://cyx8m53vblv5h"]
 
-[ext_resource type="Script" uid="uid://qr7req7m0fik" path="res://section_graph_node.gd" id="1_graph_node"]
+[ext_resource type="Script" uid="uid://73nxds8a005i" path="res://navi_graph.gd" id="1_graph_node"]
 [ext_resource type="Script" uid="uid://dpqn24ggp7h6e" path="res://player.gd" id="1_script"]
 [ext_resource type="Script" uid="uid://cqutwd5buay8s" path="res://enemy.gd" id="2_script"]
 
@@ -72,7 +72,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform9" type="StaticBody2D" parent="."]
-position = Vector2(506, 73.09428)
+position = Vector2(480, 77.09945)
 scale = Vector2(0.6400484, 0.45145908)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform9"]
@@ -83,7 +83,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform5" type="StaticBody2D" parent="."]
-position = Vector2(281, 240.30994)
+position = Vector2(259, 257.3319)
 scale = Vector2(1.64, 0.27999997)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform5"]
@@ -172,5 +172,5 @@ position = Vector2(-9, 0)
 color = Color(0.85, 0.25, 0.2, 1)
 polygon = PackedVector2Array(22, 0, 20.36, 5.7, 15.56, 10.5, 9.87, 12.06, 3.88, 10.38, -0.94, 5.7, -2.53, 0, -0.94, -5.7, 3.88, -10.38, 9.87, -12.06, 15.56, -10.5, 20.36, -5.7)
 
-[node name="SectionGraph" type="Node2D" parent="."]
+[node name="NaviGraph" type="Node2D" parent="."]
 script = ExtResource("1_graph_node")
