@@ -21,6 +21,9 @@ var _jump_peak_y: float = 0.0
 var _jump_back_out_dir: float = 0.0  # if inside ledge, move this way until peak (-1, 0, 1)
 var _lead_in_target_x: float = 0.0  # takeoff edge x we walk toward during LEAD_IN
 
+################################################################################
+# Setup
+################################################################################
 func _ready() -> void:
 	_player = get_parent().get_node("Player") as CharacterBody2D
 	_graph = (get_parent().get_node("SectionGraph") as Node2D).graph
@@ -38,20 +41,9 @@ func _initialize_ai_state() -> void:
 		_source_node = _path[0]
 		_dest_node = _path[1]
 
-func _physics_process(delta: float) -> void:
-	super._physics_process(delta)
-	_process_ai(delta)
-
-func _process_ai(_delta: float) -> void:
-	_update_current_section()
-	match _ai_state:
-		AiState.STANDING:
-			_tick_standing()
-		AiState.TRAVERSING_EDGE:
-			_tick_traversing_edge()
-		AiState.JUMP_SEQUENCE:
-			_tick_jump_sequence()
-
+################################################################################
+# Input
+################################################################################
 func _get_move_input() -> float:
 	# Walking towards a node
 	if _ai_state == AiState.TRAVERSING_EDGE and _has_dest_node():
@@ -60,7 +52,7 @@ func _get_move_input() -> float:
 
 	if _ai_state == AiState.JUMP_SEQUENCE:
 		var x: float = _get_jump_sequence_move_input()
-		print("jump move input: ", x)
+		print("jump move input: ", x, " jump_phase: ", _jump_phase)
 		return x
 
 	# Standing, pathless! Walk towards the player.
@@ -70,7 +62,6 @@ func _get_move_input() -> float:
 	return 0.0
 
 func _get_jump_sequence_move_input() -> float:
-	print("jump_phase: ", _jump_phase, " jump_back_out_dir: ", _jump_back_out_dir)
 	if _jump_phase == JumpPhase.LEAD_IN:
 		return signf(_lead_in_target_x - global_position.x)
 
@@ -107,24 +98,25 @@ func _get_jump_just_pressed() -> bool:
 		return true
 	return false
 
-func _calculate_path() -> Array[StringName]:
-	var from_id: StringName = _current_node_id if _current_node_id != &"" else _graph.get_section_under_body(self)
-	if from_id == &"":
-		from_id = _current_section_id
-	var to_id: StringName = _graph.get_section_under_body(_player)
-	if to_id == &"":
-		print("[Enemy] path: no to_id (player section empty)")
-		return []
-	var path: Array[StringName] = _graph.find_path(from_id, to_id)
-	return path
+func _get_move_speed() -> float:
+	return speed
 
-func _update_current_section() -> void:
-	if _ai_state == AiState.TRAVERSING_EDGE and _source_node != &"" and _has_dest_node():
-		var pos_from: Vector2 = _graph.get_section_position(_source_node)
-		var pos_to: Vector2 = _graph.get_section_position(_dest_node)
-		_current_section_id = _dest_node if global_position.distance_to(pos_to) <= global_position.distance_to(pos_from) else _source_node
-	elif is_on_floor():
-		_current_section_id = _graph.get_section_under_body(self)
+################################################################################
+# Tick
+################################################################################
+func _physics_process(delta: float) -> void:
+	super._physics_process(delta)
+	_process_ai(delta)
+
+func _process_ai(_delta: float) -> void:
+	_update_current_section()
+	match _ai_state:
+		AiState.STANDING:
+			_tick_standing()
+		AiState.TRAVERSING_EDGE:
+			_tick_traversing_edge()
+		AiState.JUMP_SEQUENCE:
+			_tick_jump_sequence()
 
 func _tick_standing() -> void:
 	_path = _calculate_path()
@@ -149,34 +141,6 @@ func _tick_traversing_edge() -> void:
 		_current_node_id = _dest_node
 		_stand_still()
 
-func _start_jump_sequence(edge_from: StringName, edge_to: StringName) -> void:
-	_source_node = edge_from
-	_dest_node = edge_to
-	_ai_state = AiState.JUMP_SEQUENCE
-	_jump_phase = JumpPhase.LEAD_IN
-	_jump_start_y = global_position.y
-	_jump_peak_y = global_position.y
-	_wants_jump_press = false
-	_jump_back_out_dir = 0.0
-	# Lead-in walks toward the takeoff edge (our platform’s edge toward the dest), not the section position
-	_lead_in_target_x = _get_lead_in_target_x(edge_from, edge_to)
-
-# Lead-in walks toward the takeoff edge (our platform's edge toward the dest), not the section position.
-func _get_lead_in_target_x(edge_from: StringName, edge_to: StringName) -> float:
-	var ledge: Vector2 = _get_ledge_x_bounds(edge_to)
-	var pos_from: Vector2 = _graph.get_section_position(edge_from)
-	var ledge_center_x: float = (ledge.x + ledge.y) * 0.5
-	var approach_from_left: bool = pos_from.x < ledge_center_x
-	var platform_other_x: float = _get_walk_neighbor_section_x(edge_from)
-	return maxf(pos_from.x, platform_other_x) if approach_from_left else minf(pos_from.x, platform_other_x)
-
-func _get_walk_neighbor_section_x(edge: StringName) -> float:
-	var pos: Vector2 = _graph.get_section_position(edge)
-	for nb in _graph.get_neighbors(edge):
-		if nb.type == SectionGraph.EdgeType.WALK:
-			return _graph.get_section_position(nb.to).x
-	return pos.x
-
 func _tick_jump_sequence() -> void:
 	match _jump_phase:
 		JumpPhase.LEAD_IN:
@@ -200,26 +164,6 @@ func _tick_jump_lead_in() -> void:
 	var ledge: Vector2 = _get_ledge_x_bounds(_dest_node)
 	_compute_jump_back_out_dir(ledge.x, ledge.y)
 
-func _get_ledge_x_bounds(dest_node: StringName) -> Vector2:
-	var pos_to: Vector2 = _graph.get_section_position(dest_node)
-	var ledge_min_x: float = pos_to.x
-	var ledge_max_x: float = pos_to.x
-	for nb in _graph.get_neighbors(dest_node):
-		if nb.type == SectionGraph.EdgeType.WALK:
-			var pos_nb: Vector2 = _graph.get_section_position(nb.to)
-			ledge_min_x = minf(pos_to.x, pos_nb.x)
-			ledge_max_x = maxf(pos_to.x, pos_nb.x)
-			break
-	return Vector2(ledge_min_x, ledge_max_x)
-
-func _compute_jump_back_out_dir(ledge_min_x: float, ledge_max_x: float) -> void:
-	var pos_from: Vector2 = _graph.get_section_position(_source_node)
-	var ledge_center_x: float = (ledge_min_x + ledge_max_x) * 0.5
-	var approach_from_left: bool = pos_from.x < ledge_center_x
-	var edge_x: float = ledge_min_x - 20.0 if approach_from_left else ledge_max_x + 20.0
-	var inside: bool = (approach_from_left and global_position.x >= edge_x) or (not approach_from_left and global_position.x <= edge_x)
-	_jump_back_out_dir = -1.0 if (inside and approach_from_left) else (1.0 if (inside and not approach_from_left) else 0.0)
-
 func _tick_jump_press() -> void:
 	if not is_on_floor():
 		_jump_phase = JumpPhase.ASCENT
@@ -240,6 +184,76 @@ func _tick_jump_air_control() -> void:
 		_current_node_id = _current_section_id
 		_stand_still()
 
+################################################################################
+# Private helpers
+################################################################################
+func _update_current_section() -> void:
+	if _ai_state == AiState.TRAVERSING_EDGE and _source_node != &"" and _has_dest_node():
+		var pos_from: Vector2 = _graph.get_section_position(_source_node)
+		var pos_to: Vector2 = _graph.get_section_position(_dest_node)
+		_current_section_id = _dest_node if global_position.distance_to(pos_to) <= global_position.distance_to(pos_from) else _source_node
+	elif is_on_floor():
+		_current_section_id = _graph.get_section_under_body(self)
+
+func _calculate_path() -> Array[StringName]:
+	var from_id: StringName = _current_node_id if _current_node_id != &"" else _graph.get_section_under_body(self)
+	if from_id == &"":
+		from_id = _current_section_id
+	var to_id: StringName = _graph.get_section_under_body(_player)
+	if to_id == &"":
+		print("[Enemy] path: no to_id (player section empty)")
+		return []
+	var path: Array[StringName] = _graph.find_path(from_id, to_id)
+	return path
+
+func _start_jump_sequence(edge_from: StringName, edge_to: StringName) -> void:
+	_source_node = edge_from
+	_dest_node = edge_to
+	_ai_state = AiState.JUMP_SEQUENCE
+	_jump_phase = JumpPhase.LEAD_IN
+	_jump_start_y = global_position.y
+	_jump_peak_y = global_position.y
+	_wants_jump_press = false
+	_jump_back_out_dir = 0.0
+	# Lead-in walks toward the takeoff edge (our platform's edge toward the dest), not the section position
+	_lead_in_target_x = _get_lead_in_target_x(edge_from, edge_to)
+
+# Lead-in walks toward the takeoff edge (our platform's edge toward the dest), not the section position.
+func _get_lead_in_target_x(edge_from: StringName, edge_to: StringName) -> float:
+	var ledge: Vector2 = _get_ledge_x_bounds(edge_to)
+	var pos_from: Vector2 = _graph.get_section_position(edge_from)
+	var ledge_center_x: float = (ledge.x + ledge.y) * 0.5
+	var approach_from_left: bool = pos_from.x < ledge_center_x
+	var platform_other_x: float = _get_walk_neighbor_section_x(edge_from)
+	return maxf(pos_from.x, platform_other_x) if approach_from_left else minf(pos_from.x, platform_other_x)
+
+func _get_walk_neighbor_section_x(edge: StringName) -> float:
+	var pos: Vector2 = _graph.get_section_position(edge)
+	for nb in _graph.get_neighbors(edge):
+		if nb.type == SectionGraph.EdgeType.WALK:
+			return _graph.get_section_position(nb.to).x
+	return pos.x
+
+func _get_ledge_x_bounds(dest_node: StringName) -> Vector2:
+	var pos_to: Vector2 = _graph.get_section_position(dest_node)
+	var ledge_min_x: float = pos_to.x
+	var ledge_max_x: float = pos_to.x
+	for nb in _graph.get_neighbors(dest_node):
+		if nb.type == SectionGraph.EdgeType.WALK:
+			var pos_nb: Vector2 = _graph.get_section_position(nb.to)
+			ledge_min_x = minf(pos_to.x, pos_nb.x)
+			ledge_max_x = maxf(pos_to.x, pos_nb.x)
+			break
+	return Vector2(ledge_min_x, ledge_max_x)
+
+func _compute_jump_back_out_dir(ledge_min_x: float, ledge_max_x: float) -> void:
+	var pos_from: Vector2 = _graph.get_section_position(_source_node)
+	var ledge_center_x: float = (ledge_min_x + ledge_max_x) * 0.5
+	var approach_from_left: bool = pos_from.x < ledge_center_x
+	var edge_x: float = ledge_min_x - 20.0 if approach_from_left else ledge_max_x + 20.0
+	var inside: bool = (approach_from_left and global_position.x >= edge_x) or (not approach_from_left and global_position.x <= edge_x)
+	_jump_back_out_dir = -1.0 if (inside and approach_from_left) else (1.0 if (inside and not approach_from_left) else 0.0)
+
 func _stand_still() -> void:
 	_ai_state = AiState.STANDING
 	_source_node = &""
@@ -250,9 +264,6 @@ func _walk_from_edge_to_edge(edge_from: StringName, edge_to: StringName) -> void
 	_source_node = edge_from
 	_dest_node = edge_to
 	_ai_state = AiState.TRAVERSING_EDGE
-
-func _get_move_speed() -> float:
-	return speed
 
 func _has_dest_node() -> bool:
 	return _dest_node != &""
