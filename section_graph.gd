@@ -113,40 +113,11 @@ func find_path(from_id: StringName, to_id: StringName) -> Array[StringName]:
 
 	return []
 
-func get_debug_edge_color(type: EdgeType) -> Color:
-	match type:
-		EdgeType.WALK:
-			return Color.CYAN
-		EdgeType.JUMP:
-			return Color.RED
-		EdgeType.FALL:
-			return Color.GREEN
-	return Color.CYAN
-
-func get_debug_legend_entries() -> Array:
-	return [
-		{ label = "Walk", color = get_debug_edge_color(EdgeType.WALK) },
-		{ label = "Jump", color = get_debug_edge_color(EdgeType.JUMP) },
-		{ label = "Fall", color = get_debug_edge_color(EdgeType.FALL) }
-	]
-
-# PlatformN StaticBody2D with CollisionShape2D + RectangleShape2D; shared by SectionGraph and SectionGraphNode.
-static func get_platform_bodies(root: Node2D) -> Array[StaticBody2D]:
-	var list: Array[StaticBody2D] = []
-	for child in root.get_children():
-		var body := child as StaticBody2D
-		if body == null or not str(body.name).begins_with("Platform"):
-			continue
-		var shape: CollisionShape2D = body.get_node_or_null("CollisionShape2D") as CollisionShape2D
-		if shape == null or not (shape.shape is RectangleShape2D):
-			continue
-		list.append(body)
-	return list
-
 func _discover_platforms(root: Node2D) -> Array[StaticBody2D]:
-	var list: Array[StaticBody2D] = get_platform_bodies(root)
-	list.sort_custom(func(a: StaticBody2D, b: StaticBody2D) -> bool: return a.global_position.x < b.global_position.x)
-	return list
+	var nodes: Array[StaticBody2D] = []
+	for n in root.find_children("Platform*", "StaticBody2D"):
+		nodes.append(n as StaticBody2D)
+	return nodes
 
 func _register_positions_from_platforms() -> void:
 	for n in _platforms:

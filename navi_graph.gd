@@ -15,46 +15,25 @@ var _last_source_positions: Dictionary = {}  # node path -> Vector2 (editor only
 var _player: CharacterBody2D
 var _enemy: CharacterBody2D
 
-const EDGE_ARROW_LENGTH: float = 8.0
-const EDGE_ARROW_WIDTH: float = 6.0
-
 func _init() -> void:
 	graph = SectionGraph.new()
 	debug_ui = DebugUI.new()
+
+func _ready() -> void:
+	var parent: Node = get_parent()
+	_player = parent.get_node("Player") as CharacterBody2D
+	_enemy = parent.get_node("Enemy") as CharacterBody2D
+
+	_apply_graph_params()
+	graph.set_root(parent)
+	debug_ui.visible = debug_draw
+	queue_redraw()
 
 func _apply_graph_params() -> void:
 	graph.max_jump_height = max_jump_height
 	graph.jump_point_offset = jump_point_offset
 	graph.max_edge_length = max_edge_length
 	graph.collapse_radius = collapse_radius
-
-func _ready() -> void:
-	_apply_graph_params()
-	graph.set_root(get_parent())
-	_player = get_parent().get_node("Player") as CharacterBody2D
-	_enemy = get_parent().get_node("Enemy") as CharacterBody2D
-	debug_ui.visible = debug_draw
-	queue_redraw()
-
-func _get_source_positions() -> Dictionary:
-	var out: Dictionary = {}
-	var parent: Node = get_parent()
-	for body in SectionGraph.get_platform_bodies(parent):
-		out[parent.get_path_to(body)] = body.global_position
-	return out
-
-func _node_positions_changed(new_positions: Dictionary) -> bool:
-	if _last_source_positions.size() != new_positions.size():
-		return true
-
-	for path in new_positions:
-		if (
-			not _last_source_positions.has(path) or
-			not _last_source_positions[path].is_equal_approx(new_positions[path])
-		):
-			return true
-
-	return false
 
 # In the editor, regenerate the graph when node positions change
 func _process(_delta: float) -> void:
@@ -85,5 +64,26 @@ func _draw() -> void:
 		enemy_sid = _enemy.get_current_section_id() if _enemy else &""
 
 	if debug_ui:
-		debug_ui.draw_section_graph(self, graph, player_sid, enemy_sid)
-		debug_ui.draw_legend(self, graph)
+		debug_ui.draw_graph(self, graph, player_sid, enemy_sid)
+		debug_ui.draw_legend(self)
+
+
+func _get_source_positions() -> Dictionary:
+	var out: Dictionary = {}
+	var parent: Node = get_parent()
+	for body in parent.find_children("Platform*"):
+		out[parent.get_path_to(body)] = body.global_position
+	return out
+
+func _node_positions_changed(new_positions: Dictionary) -> bool:
+	if _last_source_positions.size() != new_positions.size():
+		return true
+
+	for path in new_positions:
+		if (
+			not _last_source_positions.has(path) or
+			not _last_source_positions[path].is_equal_approx(new_positions[path])
+		):
+			return true
+
+	return false
