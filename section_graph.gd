@@ -15,6 +15,7 @@ var _platforms: Array[StaticBody2D] = []
 var _root: Node2D
 var max_jump_height: float = 220.0 # Max vertical rise for jump edges
 var jump_point_offset: float = 40.0 # Horizontal offset of jump points from ledge edge
+var max_edge_length: float = 300.0 # Max edge length (0 = no limit)
 var _collapse_radius: float = 20.0 # Merge points within this distance
 
 func set_root(root: Node2D) -> void:
@@ -334,6 +335,8 @@ func _sanitize_edges() -> void:
 		var a: Vector2 = _positions.get(e.from, Vector2.ZERO)
 		var b: Vector2 = _positions.get(e.to, Vector2.ZERO)
 		if absf(a.y - b.y) > max_jump_height:
+			continue
+		if max_edge_length > 0.0 and e.type != EdgeType.WALK and a.distance_to(b) > max_edge_length:
 			continue
 		if e.type == EdgeType.WALK:
 			var key: String = str(e.from) + "|" + str(e.to)
