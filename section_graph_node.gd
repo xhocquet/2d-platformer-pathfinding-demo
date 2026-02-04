@@ -73,28 +73,37 @@ func _draw() -> void:
 		if sid == player_sid:
 			_draw_filled_half_circle(from_pos, RADIUS, 3.0 * PI / 2.0, PI / 2.0 + TAU, Color.BLUE)
 
-		for neighbor in graph.get_neighbors(sid):
+		var neighbors := graph.get_neighbors(sid)
+		if Engine.is_editor_hint():
+			var by_to: Dictionary = {}
+			for neighbor in neighbors:
+				var to_id: StringName = neighbor.to
+				if not by_to.has(to_id):
+					by_to[to_id] = []
+				(by_to[to_id] as Array).append(neighbor)
+			for to_id in by_to:
+				var to_pos := graph.get_section_position(to_id)
+				if from_pos == Vector2.ZERO or to_pos == Vector2.ZERO:
+					continue
+				var dir := (to_pos - from_pos).normalized()
+				var perp := Vector2(-dir.y, dir.x)
+				var group: Array = by_to[to_id]
+				for i in min(2, group.size()):
+					var neighbor: Dictionary = group[i]
+					var offset_amount: float = -1.0 if i == 0 else 1.0
+					var a := from_pos + perp * offset_amount
+					var b := to_pos + perp * offset_amount
+					draw_line(a, b, graph.get_debug_edge_color(neighbor.type))
+			continue
+
+		for neighbor in neighbors:
 			var to_pos := graph.get_section_position(neighbor.to)
 			if from_pos == Vector2.ZERO or to_pos == Vector2.ZERO:
 				continue
-
-			var a: Vector2
-			var b: Vector2
-			if Engine.is_editor_hint():
-				var dir := (to_pos - from_pos).normalized()
-				var perp := Vector2(-dir.y, dir.x)
-				var offset_amount: float = randf_range(-10.0, 10.0)
-				a = from_pos + perp * offset_amount
-				b = to_pos + perp * offset_amount
-			else:
-				a = from_pos
-				b = to_pos
-
+			var a := from_pos
+			var b := to_pos
 			var c: Color = graph.get_debug_edge_color(neighbor.type)
 			draw_line(a, b, c)
-			var dir_to_toward_from := (a - b).normalized()
-			_draw_direction_triangle(a, dir_to_toward_from, Color.YELLOW)
-			_draw_direction_triangle(b, dir_to_toward_from, Color.YELLOW)
 
 	if debug_draw:
 		_draw_debug_legend()
@@ -117,9 +126,3 @@ func _draw_filled_half_circle(center: Vector2, radius: float, start_angle: float
 		var a: float = start_angle + t * (end_angle - start_angle)
 		points.append(center + Vector2(cos(a), sin(a)) * radius)
 	draw_polygon(points, [color])
-
-func _draw_direction_triangle(tip: Vector2, dir: Vector2, color: Color) -> void:
-	var perp := Vector2(-dir.y, dir.x)
-	var back := tip - dir * EDGE_ARROW_LENGTH
-	var half_w: float = EDGE_ARROW_WIDTH * 0.5
-	draw_polygon(PackedVector2Array([tip, back + perp * half_w, back - perp * half_w]), [color])

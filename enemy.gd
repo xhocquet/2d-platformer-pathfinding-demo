@@ -12,6 +12,8 @@ var _player: CharacterBody2D
 var _ai_state: AiState = AiState.STANDING
 var _source_node: StringName = &"" # source edge
 var _dest_node: StringName = &"" # target edge
+var _source_position: Vector2 = Vector2.ZERO
+var _dest_position: Vector2 = Vector2.ZERO
 var _current_node_id: StringName = &""  # node we've arrived at
 var _path: Array[StringName] = [] # path from source to target edge
 var _wants_jump_press: bool = false
@@ -40,6 +42,8 @@ func _initialize_ai_state() -> void:
 		_ai_state = AiState.TRAVERSING_EDGE
 		_source_node = _path[0]
 		_dest_node = _path[1]
+		_source_position = _graph.get_section_position(_source_node)
+		_dest_position = _graph.get_section_position(_dest_node)
 
 ################################################################################
 # Input
@@ -47,8 +51,7 @@ func _initialize_ai_state() -> void:
 func _get_move_input() -> float:
 	# Walking towards a node
 	if _ai_state == AiState.TRAVERSING_EDGE and _has_dest_node():
-		var target_pos: Vector2 = _graph.get_section_position(_dest_node)
-		return signf(target_pos.x - global_position.x)
+		return signf(_dest_position.x - global_position.x)
 
 	if _ai_state == AiState.JUMP_SEQUENCE:
 		var x: float = _get_jump_sequence_move_input()
@@ -66,29 +69,25 @@ func _get_jump_sequence_move_input() -> float:
 		return signf(_lead_in_target_x - global_position.x)
 
 	if _jump_phase == JumpPhase.JUMP_PRESS:
-		var target_pos: Vector2 = _graph.get_section_position(_dest_node)
-
-		if absf(target_pos.x - global_position.x) > LARGE_JUMP_GAP_X:
-			return signf(target_pos.x - global_position.x)
-
+		if absf(_dest_position.x - global_position.x) > LARGE_JUMP_GAP_X:
+			return signf(_dest_position.x - global_position.x)
 		return _jump_back_out_dir
 
 	if _jump_phase == JumpPhase.ASCENT:
-		var target_pos: Vector2 = _graph.get_section_position(_dest_node)
-		var at_ledge_y: bool = global_position.y <= target_pos.y
-		if at_ledge_y and absf(target_pos.x - global_position.x) > LARGE_JUMP_GAP_X:
-			return signf(target_pos.x - global_position.x)
+		var at_ledge_y: bool = global_position.y <= _dest_position.y
+		if at_ledge_y and absf(_dest_position.x - global_position.x) > LARGE_JUMP_GAP_X:
+			return signf(_dest_position.x - global_position.x)
+
 		# Below ledge y: only allow back-out if it's not toward target (e.g. when inside ledge, back-out can point inward).
 		if not at_ledge_y:
-			var toward_target: float = signf(target_pos.x - global_position.x)
+			var toward_target: float = signf(_dest_position.x - global_position.x)
 			if toward_target != 0.0 and _jump_back_out_dir == toward_target:
 				return 0.0
 		return _jump_back_out_dir
 
 	if _jump_phase == JumpPhase.AIR_CONTROL:
 		# Always steer toward intended landing; don't chase player mid-air or we skip the platform.
-		var target_pos: Vector2 = _graph.get_section_position(_dest_node)
-		return signf(target_pos.x - global_position.x)
+		return signf(_dest_position.x - global_position.x)
 
 	return 0.0
 
@@ -133,8 +132,7 @@ func _tick_traversing_edge() -> void:
 		_stand_still()
 		return
 
-	var target_pos: Vector2 = _graph.get_section_position(_dest_node)
-	var arrived: bool = global_position.distance_to(target_pos) <= ARRIVAL_DIST
+	var arrived: bool = global_position.distance_to(_dest_position) <= ARRIVAL_DIST
 	if is_on_floor() and _current_section_id == _dest_node:
 		arrived = true
 	if arrived:
@@ -175,8 +173,7 @@ func _tick_jump_ascent() -> void:
 		_stand_still()
 		return
 
-	var target_y: float = _graph.get_section_position(_dest_node).y
-	if global_position.y <= target_y:
+	if global_position.y <= _dest_position.y:
 		_jump_phase = JumpPhase.AIR_CONTROL
 
 func _tick_jump_air_control() -> void:
@@ -189,9 +186,7 @@ func _tick_jump_air_control() -> void:
 ################################################################################
 func _update_current_section() -> void:
 	if _ai_state == AiState.TRAVERSING_EDGE and _source_node != &"" and _has_dest_node():
-		var pos_from: Vector2 = _graph.get_section_position(_source_node)
-		var pos_to: Vector2 = _graph.get_section_position(_dest_node)
-		_current_section_id = _dest_node if global_position.distance_to(pos_to) <= global_position.distance_to(pos_from) else _source_node
+		_current_section_id = _dest_node if global_position.distance_to(_dest_position) <= global_position.distance_to(_source_position) else _source_node
 	elif is_on_floor():
 		_current_section_id = _graph.get_section_under_body(self)
 
@@ -209,6 +204,8 @@ func _calculate_path() -> Array[StringName]:
 func _start_jump_sequence(edge_from: StringName, edge_to: StringName) -> void:
 	_source_node = edge_from
 	_dest_node = edge_to
+	_source_position = _graph.get_section_position(edge_from)
+	_dest_position = _graph.get_section_position(edge_to)
 	_ai_state = AiState.JUMP_SEQUENCE
 	_jump_phase = JumpPhase.LEAD_IN
 	_jump_start_y = global_position.y
@@ -221,21 +218,22 @@ func _start_jump_sequence(edge_from: StringName, edge_to: StringName) -> void:
 # Lead-in walks toward the takeoff edge (our platform's edge toward the dest), not the section position.
 func _get_lead_in_target_x(edge_from: StringName, edge_to: StringName) -> float:
 	var ledge: Vector2 = _get_ledge_x_bounds(edge_to)
-	var pos_from: Vector2 = _graph.get_section_position(edge_from)
 	var ledge_center_x: float = (ledge.x + ledge.y) * 0.5
-	var approach_from_left: bool = pos_from.x < ledge_center_x
+	var approach_from_left: bool = _source_position.x < ledge_center_x
 	var platform_other_x: float = _get_walk_neighbor_section_x(edge_from)
-	return maxf(pos_from.x, platform_other_x) if approach_from_left else minf(pos_from.x, platform_other_x)
+	if approach_from_left:
+		return maxf(_source_position.x, platform_other_x)
+	return minf(_source_position.x, platform_other_x)
 
 func _get_walk_neighbor_section_x(edge: StringName) -> float:
-	var pos: Vector2 = _graph.get_section_position(edge)
+	var pos: Vector2 = _source_position if edge == _source_node else _graph.get_section_position(edge)
 	for nb in _graph.get_neighbors(edge):
 		if nb.type == SectionGraph.EdgeType.WALK:
 			return _graph.get_section_position(nb.to).x
 	return pos.x
 
 func _get_ledge_x_bounds(dest_node: StringName) -> Vector2:
-	var pos_to: Vector2 = _graph.get_section_position(dest_node)
+	var pos_to: Vector2 = _dest_position if dest_node == _dest_node else _graph.get_section_position(dest_node)
 	var ledge_min_x: float = pos_to.x
 	var ledge_max_x: float = pos_to.x
 	for nb in _graph.get_neighbors(dest_node):
@@ -247,9 +245,8 @@ func _get_ledge_x_bounds(dest_node: StringName) -> Vector2:
 	return Vector2(ledge_min_x, ledge_max_x)
 
 func _compute_jump_back_out_dir(ledge_min_x: float, ledge_max_x: float) -> void:
-	var pos_from: Vector2 = _graph.get_section_position(_source_node)
 	var ledge_center_x: float = (ledge_min_x + ledge_max_x) * 0.5
-	var approach_from_left: bool = pos_from.x < ledge_center_x
+	var approach_from_left: bool = _source_position.x < ledge_center_x
 	var edge_x: float = ledge_min_x - 20.0 if approach_from_left else ledge_max_x + 20.0
 	var inside: bool = (approach_from_left and global_position.x >= edge_x) or (not approach_from_left and global_position.x <= edge_x)
 	_jump_back_out_dir = -1.0 if (inside and approach_from_left) else (1.0 if (inside and not approach_from_left) else 0.0)
@@ -258,11 +255,15 @@ func _stand_still() -> void:
 	_ai_state = AiState.STANDING
 	_source_node = &""
 	_dest_node = &""
+	_source_position = Vector2.ZERO
+	_dest_position = Vector2.ZERO
 	_jump_back_out_dir = 0.0
 
 func _walk_from_edge_to_edge(edge_from: StringName, edge_to: StringName) -> void:
 	_source_node = edge_from
 	_dest_node = edge_to
+	_source_position = _graph.get_section_position(edge_from)
+	_dest_position = _graph.get_section_position(edge_to)
 	_ai_state = AiState.TRAVERSING_EDGE
 
 func _has_dest_node() -> bool:

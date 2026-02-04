@@ -6,6 +6,8 @@ extends RefCounted
 enum EdgeType { WALK, FALL, JUMP }
 
 const _SEGMENT_X_TOLERANCE := 2.0
+const _SECTION_RAY_LENGTH := 40.0
+const _SECTION_RAY_OFFSET := 14.0  # horizontal fallback when center ray misses (e.g. near ledge)
 
 var _edges: Array[Dictionary] = [] # from_id, to_id, type
 var _edge_cache: Dictionary = {}  # key(from,to,type) -> true
@@ -36,9 +38,6 @@ func get_section_ids() -> Array:
 
 func get_section_position(section_id: StringName) -> Vector2:
 	return _positions.get(section_id, Vector2.ZERO)
-
-const _SECTION_RAY_LENGTH := 40.0
-const _SECTION_RAY_OFFSET := 14.0  # horizontal fallback when center ray misses (e.g. near ledge)
 
 func get_section_under_body(body: CharacterBody2D) -> StringName:
 	if not body.is_on_floor():
@@ -342,6 +341,8 @@ func _sanitize_edges() -> void:
 	_edge_cache.clear()
 	for e in _edges:
 		_edge_cache[_edge_key(e.from, e.to, e.type)] = true
+
+# --- Small private helpers ---
 
 func _add_edge_if_reachable(from_id: StringName, to_id: StringName) -> void:
 	var from_pos: Vector2 = _positions.get(from_id, Vector2.ZERO)
