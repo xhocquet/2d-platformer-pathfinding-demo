@@ -330,7 +330,12 @@ func _sanitize_edges() -> void:
 		var b: Vector2 = _positions.get(e.to, Vector2.ZERO)
 		if absf(a.y - b.y) > max_jump_height:
 			continue
-		if max_edge_length > 0.0 and e.type != EdgeType.WALK and a.distance_to(b) > max_edge_length:
+		if (
+		  max_edge_length > 0.0 and
+			e.type != EdgeType.WALK and
+			e.type != EdgeType.FALL and
+			a.distance_to(b) > max_edge_length
+		):
 			continue
 		keep.append(e)
 	_edges = keep

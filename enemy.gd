@@ -5,6 +5,7 @@ enum JumpPhase { LEAD_IN, JUMP_PRESS, ASCENT, AIR_CONTROL }
 
 const ARRIVAL_DIST: float = 16.0
 const LEAD_IN_DIST: float = 10.0  # must be this close to source node before initiating jump
+const LARGE_JUMP_GAP_X: float = 40.0  # during ascent, steer toward target if horizontal gap exceeds this
 @export var speed := 100.0
 
 var _player: CharacterBody2D
@@ -73,11 +74,30 @@ func _get_jump_sequence_move_input() -> float:
 	if _jump_phase == JumpPhase.LEAD_IN:
 		return signf(_lead_in_target_x - global_position.x)
 
-	if _jump_back_out_dir != 0.0 and (_jump_phase == JumpPhase.JUMP_PRESS or _jump_phase == JumpPhase.ASCENT):
+	if _jump_phase == JumpPhase.JUMP_PRESS:
+		var target_pos: Vector2 = _graph.get_section_position(_dest_node)
+
+		if absf(target_pos.x - global_position.x) > LARGE_JUMP_GAP_X:
+			return signf(target_pos.x - global_position.x)
+
+		return _jump_back_out_dir
+
+	if _jump_phase == JumpPhase.ASCENT:
+		var target_pos: Vector2 = _graph.get_section_position(_dest_node)
+		var at_ledge_y: bool = global_position.y <= target_pos.y
+		if at_ledge_y and absf(target_pos.x - global_position.x) > LARGE_JUMP_GAP_X:
+			return signf(target_pos.x - global_position.x)
+		# Below ledge y: only allow back-out if it's not toward target (e.g. when inside ledge, back-out can point inward).
+		if not at_ledge_y:
+			var toward_target: float = signf(target_pos.x - global_position.x)
+			if toward_target != 0.0 and _jump_back_out_dir == toward_target:
+				return 0.0
 		return _jump_back_out_dir
 
 	if _jump_phase == JumpPhase.AIR_CONTROL:
-		return signf(_player.global_position.x - global_position.x)
+		# Always steer toward intended landing; don't chase player mid-air or we skip the platform.
+		var target_pos: Vector2 = _graph.get_section_position(_dest_node)
+		return signf(target_pos.x - global_position.x)
 
 	return 0.0
 
@@ -196,7 +216,7 @@ func _compute_jump_back_out_dir(ledge_min_x: float, ledge_max_x: float) -> void:
 	var pos_from: Vector2 = _graph.get_section_position(_source_node)
 	var ledge_center_x: float = (ledge_min_x + ledge_max_x) * 0.5
 	var approach_from_left: bool = pos_from.x < ledge_center_x
-	var edge_x: float = ledge_min_x - 40.0 if approach_from_left else ledge_max_x + 40.0
+	var edge_x: float = ledge_min_x - 20.0 if approach_from_left else ledge_max_x + 20.0
 	var inside: bool = (approach_from_left and global_position.x >= edge_x) or (not approach_from_left and global_position.x <= edge_x)
 	_jump_back_out_dir = -1.0 if (inside and approach_from_left) else (1.0 if (inside and not approach_from_left) else 0.0)
 
@@ -211,8 +231,8 @@ func _tick_jump_ascent() -> void:
 		_stand_still()
 		return
 
-	_jump_peak_y = minf(_jump_peak_y, global_position.y)
-	if global_position.y > _jump_peak_y:
+	var target_y: float = _graph.get_section_position(_dest_node).y
+	if global_position.y <= target_y:
 		_jump_phase = JumpPhase.AIR_CONTROL
 
 func _tick_jump_air_control() -> void:

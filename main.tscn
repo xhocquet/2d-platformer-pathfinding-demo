@@ -17,7 +17,7 @@ radius = 14.035668
 scale = Vector2(1, 0.99871016)
 
 [node name="Platform1" type="StaticBody2D" parent="."]
-position = Vector2(594, 518.669)
+position = Vector2(619, 500.64575)
 scale = Vector2(2.4800012, 0.32000488)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform1"]
@@ -72,7 +72,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform9" type="StaticBody2D" parent="."]
-position = Vector2(476.99997, 122.15756)
+position = Vector2(506, 73.09428)
 scale = Vector2(0.6400484, 0.45145908)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform9"]
