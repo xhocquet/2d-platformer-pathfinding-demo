@@ -5,8 +5,6 @@ enum JumpPhase { LEAD_IN, JUMP_PRESS, ASCENT, AIR_CONTROL }
 
 const ARRIVAL_DIST: float = 16.0
 const LEAD_IN_DIST: float = 10.0  # must be this close to source node before initiating jump
-const JUMP_AIR_CONTROL_HEIGHT_RATIO: float = 0.7
-
 @export var speed := 100.0
 
 var _player: CharacterBody2D
@@ -60,7 +58,9 @@ func _get_move_input() -> float:
 		return signf(target_pos.x - global_position.x)
 
 	if _ai_state == AiState.JUMP_SEQUENCE:
-		return _get_jump_sequence_move_input()
+		var x: float = _get_jump_sequence_move_input()
+		print("jump move input: ", x)
+		return x
 
 	# Standing, pathless! Walk towards the player.
 	if _ai_state == AiState.STANDING and _path.size() == 1:
@@ -69,6 +69,7 @@ func _get_move_input() -> float:
 	return 0.0
 
 func _get_jump_sequence_move_input() -> float:
+	print("jump_phase: ", _jump_phase, " jump_back_out_dir: ", _jump_back_out_dir)
 	if _jump_phase == JumpPhase.LEAD_IN:
 		return signf(_lead_in_target_x - global_position.x)
 
@@ -170,6 +171,8 @@ func _tick_jump_sequence() -> void:
 func _tick_jump_lead_in() -> void:
 	if absf(global_position.x - _lead_in_target_x) > LEAD_IN_DIST:
 		return
+
+	# Trigger jump press
 	_jump_phase = JumpPhase.JUMP_PRESS
 	_wants_jump_press = true
 	_jump_start_y = global_position.y
@@ -193,7 +196,7 @@ func _compute_jump_back_out_dir(ledge_min_x: float, ledge_max_x: float) -> void:
 	var pos_from: Vector2 = _graph.get_section_position(_source_node)
 	var ledge_center_x: float = (ledge_min_x + ledge_max_x) * 0.5
 	var approach_from_left: bool = pos_from.x < ledge_center_x
-	var edge_x: float = ledge_min_x if approach_from_left else ledge_max_x
+	var edge_x: float = ledge_min_x - 40.0 if approach_from_left else ledge_max_x + 40.0
 	var inside: bool = (approach_from_left and global_position.x >= edge_x) or (not approach_from_left and global_position.x <= edge_x)
 	_jump_back_out_dir = -1.0 if (inside and approach_from_left) else (1.0 if (inside and not approach_from_left) else 0.0)
 
@@ -207,10 +210,9 @@ func _tick_jump_ascent() -> void:
 		_current_node_id = _current_section_id
 		_stand_still()
 		return
+
 	_jump_peak_y = minf(_jump_peak_y, global_position.y)
-	var height_total: float = _jump_start_y - _jump_peak_y
-	var height_now: float = _jump_start_y - global_position.y
-	if height_total > 0.0 and height_now >= JUMP_AIR_CONTROL_HEIGHT_RATIO * height_total:
+	if global_position.y > _jump_peak_y:
 		_jump_phase = JumpPhase.AIR_CONTROL
 
 func _tick_jump_air_control() -> void:
