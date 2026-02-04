@@ -8,6 +8,7 @@ enum EdgeType { WALK, FALL, JUMP }
 const _SEGMENT_X_TOLERANCE := 2.0
 
 var _edges: Array[Dictionary] = [] # from_id, to_id, type
+var _edge_cache: Dictionary = {}  # key(from,to,type) -> true
 var _positions: Dictionary = {}  # section_id -> Vector2 (filled when root set)
 var _node_to_sections: Dictionary = {}  # Node -> [section_id_left, section_id_right]
 var _platform_to_section_ids: Dictionary = {}  # platform -> Array[StringName] (nodes on that platform)
@@ -24,6 +25,7 @@ func set_root(root: Node2D) -> void:
 	_node_to_sections.clear()
 	_platform_to_section_ids.clear()
 	_edges.clear()
+	_edge_cache.clear()
 	_platforms = _discover_platforms(root)
 	_register_positions_from_platforms()
 	_register_jump_points_from_platforms()
@@ -345,6 +347,9 @@ func _sanitize_edges() -> void:
 			seen_walk[key] = true
 		keep.append(e)
 	_edges = keep
+	_edge_cache.clear()
+	for e in _edges:
+		_edge_cache[_edge_key(e.from, e.to, e.type)] = true
 
 func _add_edge_if_reachable(from_id: StringName, to_id: StringName) -> void:
 	var from_pos: Vector2 = _positions.get(from_id, Vector2.ZERO)
@@ -362,10 +367,14 @@ func _add_edge_if_reachable(from_id: StringName, to_id: StringName) -> void:
 func _is_platform_lr(section_id: StringName) -> bool:
 	return not str(section_id).ends_with("_jump")
 
+func _edge_key(from: StringName, to: StringName, type: EdgeType) -> String:
+	return "%s|%s|%d" % [from, to, type]
+
 func _add_edge(from: StringName, to: StringName, type: EdgeType) -> void:
-	for e in _edges:
-		if e.from == from and e.to == to and e.type == type:
-			return
+	var key: String = _edge_key(from, to, type)
+	if _edge_cache.has(key):
+		return
+	_edge_cache[key] = true
 	_edges.append({ from = from, to = to, type = type })
 
 func _collapse_find(parent: Dictionary, sid: StringName) -> StringName:
