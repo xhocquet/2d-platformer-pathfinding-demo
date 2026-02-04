@@ -11,7 +11,6 @@ var _edges: Array[Dictionary] = [] # from_id, to_id, type
 var _edge_cache: Dictionary = {}  # key(from,to,type) -> true
 var _positions: Dictionary = {}  # section_id -> Vector2 (filled when root set)
 var _node_to_sections: Dictionary = {}  # Node -> [section_id_left, section_id_right]
-var _platform_to_section_ids: Dictionary = {}  # platform -> Array[StringName] (nodes on that platform)
 var _platforms: Array[StaticBody2D] = []
 var _root: Node2D
 var max_jump_height: float = 220.0 # Max vertical rise for jump edges
@@ -23,7 +22,6 @@ func set_root(root: Node2D) -> void:
 	_root = root
 	_positions.clear()
 	_node_to_sections.clear()
-	_platform_to_section_ids.clear()
 	_edges.clear()
 	_edge_cache.clear()
 	_platforms = _discover_platforms(root)
@@ -38,9 +36,6 @@ func get_section_ids() -> Array:
 
 func get_section_position(section_id: StringName) -> Vector2:
 	return _positions.get(section_id, Vector2.ZERO)
-
-func get_sections_for_platform(platform: StaticBody2D) -> Array:
-	return _platform_to_section_ids.get(platform, [])
 
 const _SECTION_RAY_LENGTH := 40.0
 const _SECTION_RAY_OFFSET := 14.0  # horizontal fallback when center ray misses (e.g. near ledge)
@@ -251,10 +246,9 @@ func _sanitize_points() -> void:
 		_node_to_sections[n] = [canonical.get(pair[0], pair[0]), canonical.get(pair[1], pair[1])]
 
 func _build_edges() -> void:
-	# One pass per platform: graph is platform-centric. Each platform contributes:
-	# (1) fall/jump edges to sections directly below its endpoints (stacked/overlapping platforms),
-	# (2) jump-point nodes and their walk/jump edges.
-	# (3) edge along all points on the platform
+	# 1 - fall/jump edges to sections directly below its endpoints (stacked/overlapping platforms)
+	# 2 - walk edges between every pair of platform nodes
+	# 3 - walk edges between every pair of platform nodes within max_jump_height of each other
 	for p in _platforms:
 		var pname: StringName = p.name
 		var pl := StringName(str(pname) + "_L")
@@ -305,7 +299,6 @@ func _build_edges() -> void:
 			var pos_b = _positions.get(b, Vector2.ZERO)
 			return pos_a.x < pos_b.x
 		)
-		_platform_to_section_ids[p] = platform_nodes
 		# Add walk edges between each pair of platform nodes, both directions.
 		for i in range(platform_nodes.size() - 1):
 			_add_edge(platform_nodes[i], platform_nodes[i + 1], EdgeType.WALK)
@@ -332,7 +325,6 @@ func _build_edges() -> void:
 
 func _sanitize_edges() -> void:
 	var keep: Array[Dictionary] = []
-	var seen_walk: Dictionary = {}  # normalized "from|to" -> true for WALK dedupe
 	for e in _edges:
 		var a: Vector2 = _positions.get(e.from, Vector2.ZERO)
 		var b: Vector2 = _positions.get(e.to, Vector2.ZERO)
@@ -340,11 +332,6 @@ func _sanitize_edges() -> void:
 			continue
 		if max_edge_length > 0.0 and e.type != EdgeType.WALK and a.distance_to(b) > max_edge_length:
 			continue
-		if e.type == EdgeType.WALK:
-			var key: String = str(e.from) + "|" + str(e.to)
-			if seen_walk.has(key):
-				continue
-			seen_walk[key] = true
 		keep.append(e)
 	_edges = keep
 	_edge_cache.clear()

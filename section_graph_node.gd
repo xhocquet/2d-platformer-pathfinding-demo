@@ -9,8 +9,7 @@ var _last_source_positions: Dictionary = {}  # node path -> Vector2 (editor only
 var _player: CharacterBody2D
 var _enemy: CharacterBody2D
 
-const RADIUS: float = 12.0
-const SEGMENTS: int = 16
+const RADIUS: float = 8.0
 const EDGE_ARROW_LENGTH: float = 8.0
 const EDGE_ARROW_WIDTH: float = 6.0
 
@@ -84,7 +83,7 @@ func _draw() -> void:
 			if Engine.is_editor_hint():
 				var dir := (to_pos - from_pos).normalized()
 				var perp := Vector2(-dir.y, dir.x)
-				var offset_amount: float = randf_range(-15.0, 15.0)
+				var offset_amount: float = randf_range(-10.0, 10.0)
 				a = from_pos + perp * offset_amount
 				b = to_pos + perp * offset_amount
 			else:
@@ -113,8 +112,8 @@ func _draw_debug_legend() -> void:
 
 func _draw_filled_half_circle(center: Vector2, radius: float, start_angle: float, end_angle: float, color: Color) -> void:
 	var points: PackedVector2Array = [center]
-	for i in SEGMENTS + 1:
-		var t: float = float(i) / float(SEGMENTS)
+	for i in 8 + 1:
+		var t: float = float(i) / float(8)
 		var a: float = start_angle + t * (end_angle - start_angle)
 		points.append(center + Vector2(cos(a), sin(a)) * radius)
 	draw_polygon(points, [color])
