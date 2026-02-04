@@ -348,9 +348,16 @@ func _add_edge_if_reachable(from_id: StringName, to_id: StringName) -> void:
 	var to_pos: Vector2 = _positions.get(to_id, Vector2.ZERO)
 	var dy: float = to_pos.y - from_pos.y
 	if dy > 0:
+		if not _is_platform_lr(from_id):
+			return
 		_add_edge(from_id, to_id, EdgeType.FALL)
 	elif dy < 0 and (from_pos.y - to_pos.y) <= max_jump_height:
+		if not _is_platform_lr(to_id):
+			return
 		_add_edge(from_id, to_id, EdgeType.JUMP)
+
+func _is_platform_lr(section_id: StringName) -> bool:
+	return not str(section_id).ends_with("_jump")
 
 func _add_edge(from: StringName, to: StringName, type: EdgeType) -> void:
 	for e in _edges:
