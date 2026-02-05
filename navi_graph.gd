@@ -26,7 +26,8 @@ func _ready() -> void:
 
 	_apply_graph_params()
 	graph.set_root(parent)
-	debug_ui.visible = debug_draw
+	# In built game, debug overlay starts off; in editor, respect debug_draw
+	debug_ui.visible = debug_draw if Engine.is_editor_hint() else false
 	queue_redraw()
 
 func _apply_graph_params() -> void:

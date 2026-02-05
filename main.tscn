@@ -50,7 +50,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform2" type="StaticBody2D" parent="."]
-position = Vector2(613, 297.38358)
+position = Vector2(614, 304.3926)
 scale = Vector2(0.6400484, 0.45145908)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform2"]
@@ -72,7 +72,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Platform9" type="StaticBody2D" parent="."]
-position = Vector2(495.99997, 77.09944)
+position = Vector2(497, 92.11883)
 scale = Vector2(0.6400484, 0.45145908)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Platform9"]
@@ -149,7 +149,7 @@ color = Color(0.4, 0.35, 0.25, 1)
 polygon = PackedVector2Array(-60, -12, 60, -12, 60, 12, -60, 12)
 
 [node name="Player" type="CharacterBody2D" parent="."]
-position = Vector2(293, 616.7956)
+position = Vector2(500, 59.0762)
 script = ExtResource("1_script")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Player"]
@@ -161,7 +161,7 @@ color = Color(0.2, 0.5, 0.9, 1)
 polygon = PackedVector2Array(24, 0, 22.17, 6.21, 16.97, 11.31, 10.76, 13.14, 4.23, 11.31, -1.03, 6.21, -2.76, 0, -1.03, -6.21, 4.23, -11.31, 10.76, -13.14, 16.97, -11.31, 22.17, -6.21)
 
 [node name="Enemy" type="CharacterBody2D" parent="."]
-position = Vector2(1037, 600.7749)
+position = Vector2(1128, 426.5502)
 script = ExtResource("2_script")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Enemy"]
